@@ -13,7 +13,7 @@ async def test_list_tools():
         tool_names = [t.name for t in tools.tools]
         assert "search_nixpkgs" in tool_names
         assert "search_nixos_options" in tool_names
-        assert "show_nixos_channels" in tool_names
+        assert "list_nixos_channels" in tool_names
 
 async def test_search_package():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
@@ -31,7 +31,7 @@ async def test_search_option():
 
 async def test_channels():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_nixos_channels", {})
+        result = await client.call_tool("list_nixos_channels", {})
         assert result.content
         text = result.content[0].text
         assert "unstable" in text.lower()
@@ -69,7 +69,7 @@ async def test_homemanager_get_option_details():
 
 async def test_homemanager_releases():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_homemanager_releases", {})
+        result = await client.call_tool("list_homemanager_releases", {})
         assert result.content
         text = result.content[0].text
         assert "unstable" in text.lower()

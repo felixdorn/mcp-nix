@@ -26,7 +26,7 @@ async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
 
     Args:
         query: Package name or keyword (e.g., "git", "video editor")
-        channel: Nixpkgs channel - "unstable" (latest) or version like "24.11", "25.05"
+        channel: NixOS channel - "unstable" (latest) or version like "24.11", "25.05"
     """
     try:
         result = NixOSSearch.search_packages(query, _SEARCH_LIMIT, channel)
@@ -77,7 +77,7 @@ async def show_nixpkgs_package(name: str, channel: str = "unstable") -> str:
 
     Args:
         name: Exact package name from search results (e.g., "git", "firefox")
-        channel: Nixpkgs channel - "unstable" or version like "24.11", "25.05"
+        channel: NixOS channel - "unstable" or version like "24.11", "25.05"
     """
     try:
         pkg = NixOSSearch.get_package(name, channel)
@@ -119,7 +119,7 @@ async def show_nixos_option(name: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
-async def show_nixos_channels() -> str:
+async def list_nixos_channels() -> str:
     """List available NixOS release channels.
 
     Shows all channels (unstable, stable releases like 24.11, 25.05) that can be
@@ -189,7 +189,7 @@ async def show_homemanager_option(name: str, release: str = "unstable") -> str:
 
 
 @mcp.tool()
-async def show_homemanager_releases() -> str:
+async def list_homemanager_releases() -> str:
     """List available Home Manager releases.
 
     Shows all releases (unstable, stable like 25.11, older versions) that can be

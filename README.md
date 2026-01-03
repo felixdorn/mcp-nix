@@ -1,29 +1,24 @@
 # A tasteful MCP for Nix*
+[![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
+
 
 ## Tools
 
-### Nixpkgs
+### Enabled by default
 
-* `search_nixpkgs`
-* `show_nixpkgs_package`
+* **Nixpkgs** (disable with `--no-packages`)
+  * Search Nixpkgs
+  * Show Nixpkgs package
+* **NixOS** (disable with `--no-options`)
+  * Search NixOS options
+  * List NixOS channels
 
-Disable with `--no-packages`
+### Disabled by default
 
-### NixOS Options
+* **Home Manager** (enabled with `--homemanager`)
+  * Search Home Manager options
+  * List Home Manager releases
 
-* `search_nixos_options`
-* `show_nixos_option`
-* `show_nixos_channels`
-
-Disable with `--no-options`
-
-### Home Manager (off by default)
-
-* `search_homemanager_options`
-* `show_homemanager_option`
-* `show_homemanager_releases`
-
-Enable with `--homemanager`
 
 
 ### Credits
