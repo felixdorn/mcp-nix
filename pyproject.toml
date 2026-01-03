@@ -1,0 +1,28 @@
+[project]
+name = "mcp-nixos-search"
+version = "0.1.0"
+description = "MCP server for NixOS package and option search"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.31.0",
+    "fastmcp>=0.1.0",
+    "pydantic>=2.0.0",
+    "platformdirs>=4.0.0",
+]
+
+[project.scripts]
+mcp-nixos-search = "mcp_nixos_search:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_nixos_search"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-anyio>=0.0.0",
+]
