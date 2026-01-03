@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """MCP server for NixOS package and option search."""
 
 import argparse

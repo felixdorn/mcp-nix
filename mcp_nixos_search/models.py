@@ -1,4 +1,5 @@
-"""Pydantic models for NixOS search results."""
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Pydantic models for search.nixos.org results."""
 
 import re
 from dataclasses import dataclass

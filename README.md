@@ -26,8 +26,4 @@ Enable with `--homemanager`
 
 
 ### Credits
-Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com) for maintaining the backends and pipeline the tool uses and for the Nix community for making all of this possible.
-
-
-### License
-MIT.
+Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com) for maintaining the backends and pipeline the tool uses and for the Nix community for making any of this possible.

@@ -1,4 +1,4 @@
-# tests/test_e2e.py
+# SPDX-License-Identifier: GPL-3.0-or-later
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Pydantic models for NixOS search results."""
 
 import re

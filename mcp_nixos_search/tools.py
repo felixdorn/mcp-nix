@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """MCP tools for NixOS search."""
 
 from . import mcp
