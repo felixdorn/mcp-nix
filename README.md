@@ -4,25 +4,26 @@
 
 ### Nixpkgs
 
-* `nixos_search_package`
-* `nixos_get_package_details`
+* `search_nixpkgs`
+* `show_nixpkgs_package`
 
 Disable with `--no-packages`
 
-### Nixos
+### NixOS Options
 
-Disable with `--no-options`.
+* `search_nixos_options`
+* `show_nixos_option`
+* `show_nixos_channels`
 
-* `nixos_search_option`
-* `nixos_get_option_detail`
+Disable with `--no-options`
 
-### Homemanager (off by default)
+### Home Manager (off by default)
+
+* `search_homemanager_options`
+* `show_homemanager_option`
+* `show_homemanager_releases`
 
 Enable with `--homemanager`
-
-* `homemanager_search_option`
-* `homemanager_get_option_details`
-* `homemanager_releases`
 
 
 ### Credits

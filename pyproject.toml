@@ -1,5 +1,5 @@
 [project]
-name = "mcp-nixos-search"
+name = "mcp-nix"
 version = "0.1.0"
 description = "MCP server for searching NixOS packages, options, and Home Manager options"
 readme = "README.md"

@@ -9,9 +9,9 @@ mcp = FastMCP("mcp-nixos-search")
 
 # Tool categories: maps category name to list of tool names
 TOOL_CATEGORIES = {
-    "packages": ["nixos_search_package", "nixos_get_package_details"],
-    "options": ["nixos_search_option", "nixos_get_option_details", "nixos_channels"],
-    "homemanager": ["homemanager_search_option", "homemanager_get_option_details", "homemanager_releases"],
+    "packages": ["search_nixpkgs", "show_nixpkgs_package"],
+    "options": ["search_nixos_options", "show_nixos_option", "show_nixos_channels"],
+    "homemanager": ["search_homemanager_options", "show_homemanager_option", "show_homemanager_releases"],
 }
 
 

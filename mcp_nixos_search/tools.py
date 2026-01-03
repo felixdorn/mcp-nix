@@ -18,11 +18,11 @@ def _format_error(e: Exception) -> str:
 
 
 @mcp.tool()
-async def nixos_search_package(query: str, channel: str = "unstable") -> str:
+async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
     """Search for NixOS packages by name or description.
 
     Returns package names, versions, and descriptions. For full details (homepage, license), use
-    nixos_get_package_details with the exact package name.
+    show_nixpkgs_package with the exact package name.
 
     Args:
         query: Package name or keyword (e.g., "git", "video editor")
@@ -44,7 +44,7 @@ async def nixos_search_package(query: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
-async def nixos_search_option(query: str, channel: str = "unstable") -> str:
+async def search_nixos_options(query: str, channel: str = "unstable") -> str:
     """Search NixOS configuration options.
 
     NixOS options configure system-level services and settings. These are NOT options from Home Manager.
@@ -69,10 +69,10 @@ async def nixos_search_option(query: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
-async def nixos_get_package_details(name: str, channel: str = "unstable") -> str:
+async def show_nixpkgs_package(name: str, channel: str = "unstable") -> str:
     """Get details for a NixOS package by exact name.
 
-    Returns version, description, homepage URL, and license. Use nixos_search_package
+    Returns version, description, homepage URL, and license. Use search_nixpkgs
     first if you don't know the exact package name.
 
     Args:
@@ -91,7 +91,7 @@ async def nixos_get_package_details(name: str, channel: str = "unstable") -> str
 
 
 @mcp.tool()
-async def nixos_get_option_details(name: str, channel: str = "unstable") -> str:
+async def show_nixos_option(name: str, channel: str = "unstable") -> str:
     """Get details for a NixOS option, or list all children if given a prefix.
 
     For leaf options like "services.nginx.enable", returns type, default, and description.
@@ -119,7 +119,7 @@ async def nixos_get_option_details(name: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
-async def nixos_channels() -> str:
+async def show_nixos_channels() -> str:
     """List available NixOS release channels.
 
     Shows all channels (unstable, stable releases like 24.11, 25.05) that can be
@@ -135,7 +135,7 @@ async def nixos_channels() -> str:
 
 
 @mcp.tool()
-async def homemanager_search_option(query: str, release: str = "unstable") -> str:
+async def search_homemanager_options(query: str, release: str = "unstable") -> str:
     """Search Home Manager options for user environment configuration.
 
     Home Manager manages user dotfiles and programs: shells, editors, git, tmux, etc.
@@ -161,7 +161,7 @@ async def homemanager_search_option(query: str, release: str = "unstable") -> st
 
 
 @mcp.tool()
-async def homemanager_get_option_details(name: str, release: str = "unstable") -> str:
+async def show_homemanager_option(name: str, release: str = "unstable") -> str:
     """Get details for a Home Manager option, or list all children if given a prefix.
 
     For leaf options like "programs.git.enable", returns type, default, and description.
@@ -189,7 +189,7 @@ async def homemanager_get_option_details(name: str, release: str = "unstable") -
 
 
 @mcp.tool()
-async def homemanager_releases() -> str:
+async def show_homemanager_releases() -> str:
     """List available Home Manager releases.
 
     Shows all releases (unstable, stable like 25.11, older versions) that can be
