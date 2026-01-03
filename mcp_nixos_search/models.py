@@ -1,8 +1,20 @@
 """Pydantic models for NixOS search results."""
 
 import re
+from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
+
+T = TypeVar("T")
+
+
+@dataclass
+class SearchResult(Generic[T]):
+    """Search result with items and total count."""
+
+    items: list[T]
+    total: int
 
 
 def _lines(*fields: tuple[str, str | list]) -> str:

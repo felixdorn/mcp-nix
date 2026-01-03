@@ -10,7 +10,7 @@ from typing import Any
 import platformdirs
 import requests
 
-from .models import Channel, Option, Package
+from .models import Channel, Option, Package, SearchResult
 
 CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour
 
@@ -177,7 +177,10 @@ class NixOSSearch:
     """NixOS package and option search functionality."""
 
     @staticmethod
-    def _es_query(index: str, query: dict[str, Any], size: int = 20, from_: int = 0) -> list[dict[str, Any]]:
+    def _es_query(
+        index: str, query: dict[str, Any], size: int = 20, from_: int = 0
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Execute ES query and return (hits, total_count)."""
         api_url = get_api_url()
         auth = get_auth()
         try:
@@ -190,10 +193,13 @@ class NixOSSearch:
             resp.raise_for_status()
             data = resp.json()
             if isinstance(data, dict) and "hits" in data:
-                hits = data.get("hits", {})
-                if isinstance(hits, dict) and "hits" in hits:
-                    return list(hits.get("hits", []))
-            return []
+                hits_data = data.get("hits", {})
+                if isinstance(hits_data, dict):
+                    hits = list(hits_data.get("hits", []))
+                    total = hits_data.get("total", {})
+                    total_count = total.get("value", 0) if isinstance(total, dict) else total
+                    return hits, total_count
+            return [], 0
         except requests.Timeout as exc:
             raise APIError("Connection timed out") from exc
         except requests.HTTPError as exc:
@@ -207,7 +213,7 @@ class NixOSSearch:
         all_hits = []
         from_ = 0
         while True:
-            hits = NixOSSearch._es_query(index, query, size=batch_size, from_=from_)
+            hits, _ = NixOSSearch._es_query(index, query, size=batch_size, from_=from_)
             if not hits:
                 break
             all_hits.extend(hits)
@@ -230,7 +236,7 @@ class NixOSSearch:
             raise InvalidLimitError(limit)
 
     @staticmethod
-    def search_packages(query: str, limit: int, channel: str) -> list[Package]:
+    def search_packages(query: str, limit: int, channel: str) -> SearchResult[Package]:
         """Search for NixOS packages."""
         NixOSSearch._validate_limit(limit)
         index = NixOSSearch._get_channel_index(channel)
@@ -246,11 +252,12 @@ class NixOSSearch:
             }
         }
 
-        hits = NixOSSearch._es_query(index, q, limit)
-        return [Package.model_validate(hit.get("_source", {})) for hit in hits]
+        hits, total = NixOSSearch._es_query(index, q, limit)
+        packages = [Package.model_validate(hit.get("_source", {})) for hit in hits]
+        return SearchResult(items=packages, total=total)
 
     @staticmethod
-    def search_options(query: str, limit: int, channel: str) -> list[Option]:
+    def search_options(query: str, limit: int, channel: str) -> SearchResult[Option]:
         """Search for NixOS options."""
         NixOSSearch._validate_limit(limit)
         index = NixOSSearch._get_channel_index(channel)
@@ -266,15 +273,16 @@ class NixOSSearch:
             }
         }
 
-        hits = NixOSSearch._es_query(index, q, limit)
-        return [Option.model_validate(hit.get("_source", {})) for hit in hits]
+        hits, total = NixOSSearch._es_query(index, q, limit)
+        options = [Option.model_validate(hit.get("_source", {})) for hit in hits]
+        return SearchResult(items=options, total=total)
 
     @staticmethod
     def get_package(name: str, channel: str) -> Package | None:
         """Get detailed info about a package."""
         index = NixOSSearch._get_channel_index(channel)
         query = {"bool": {"must": [{"term": {"type": "package"}}, {"term": {"package_pname": name}}]}}
-        hits = NixOSSearch._es_query(index, query, 1)
+        hits, _ = NixOSSearch._es_query(index, query, 1)
         if not hits:
             return None
         return Package.model_validate(hits[0].get("_source", {}))
@@ -284,7 +292,7 @@ class NixOSSearch:
         """Get detailed info about an option."""
         index = NixOSSearch._get_channel_index(channel)
         query = {"bool": {"must": [{"term": {"type": "option"}}, {"term": {"option_name": name}}]}}
-        hits = NixOSSearch._es_query(index, query, 1)
+        hits, _ = NixOSSearch._es_query(index, query, 1)
         if not hits:
             return None
         return Option.model_validate(hits[0].get("_source", {}))

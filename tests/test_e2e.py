@@ -17,14 +17,14 @@ async def test_list_tools():
 
 async def test_search_package():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("nixos_search_package", {"query": "git", "limit": 3})
+        result = await client.call_tool("nixos_search_package", {"query": "git"})
         assert result.content
         text = result.content[0].text
         assert "git" in text.lower()
 
 async def test_search_option():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("nixos_search_option", {"query": "nginx", "limit": 3})
+        result = await client.call_tool("nixos_search_option", {"query": "nginx"})
         assert result.content
         text = result.content[0].text
         assert "nginx" in text.lower()
@@ -53,7 +53,7 @@ async def test_get_option_details():
 
 async def test_homemanager_search_option():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("homemanager_search_option", {"query": "git", "limit": 3})
+        result = await client.call_tool("homemanager_search_option", {"query": "git"})
         assert result.content
         text = result.content[0].text
         assert "git" in text.lower()

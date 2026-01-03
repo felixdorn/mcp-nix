@@ -2,7 +2,9 @@
 
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
-from .search import APIError, InvalidChannelError, InvalidLimitError, NixOSSearch
+from .search import APIError, InvalidChannelError, NixOSSearch
+
+_SEARCH_LIMIT = 20
 
 
 def _format_error(e: Exception) -> str:
@@ -11,13 +13,11 @@ def _format_error(e: Exception) -> str:
         return f"Error: Invalid channel '{e.channel}'. Available: {', '.join(e.available)}"
     if isinstance(e, InvalidReleaseError):
         return f"Error: Invalid release '{e.release}'. Available: {', '.join(e.available)}"
-    if isinstance(e, InvalidLimitError):
-        return "Error: Limit must be 1-100"
     return f"Error: {e}"
 
 
 @mcp.tool()
-async def nixos_search_package(query: str, limit: int = 20, channel: str = "unstable") -> str:
+async def nixos_search_package(query: str, channel: str = "unstable") -> str:
     """Search for NixOS packages by name or description.
 
     Returns package names, versions, and descriptions. For full details (homepage, license), use
@@ -25,55 +25,57 @@ async def nixos_search_package(query: str, limit: int = 20, channel: str = "unst
 
     Args:
         query: Package name or keyword (e.g., "git", "video editor")
-        limit: Max results 1-100 (default 20). Use lower values for common terms.
         channel: NixOS release channel - "unstable" (latest) or version like "24.11", "25.05"
     """
     try:
-        packages = NixOSSearch.search_packages(query, limit, channel)
+        result = NixOSSearch.search_packages(query, _SEARCH_LIMIT, channel)
     except APIError as e:
         return _format_error(e)
 
-    if not packages:
+    if not result.items:
         return f"No packages found matching '{query}'"
 
-    header = f"Found {len(packages)} packages matching '{query}':\n"
-    return header + "\n\n".join(pkg.format_short() for pkg in packages)
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} packages:\n"
+    else:
+        header = f"Found {len(result.items)} packages:\n"
+    return header + "\n\n".join(pkg.format_short() for pkg in result.items)
 
 
 @mcp.tool()
-async def nixos_search_option(query: str, limit: int = 20, channel: str = "unstable") -> str:
-    """Search NixOS system configuration options (for configuration.nix).
+async def nixos_search_option(query: str, channel: str = "unstable") -> str:
+    """Search NixOS configuration options.
 
-    NixOS options configure system-level services and settings: systemd services,
-    networking, users, boot, filesystems, etc. These go in /etc/nixos/configuration.nix.
-    NOT for user dotfiles - use homemanager_search_option for those.
+    NixOS options configure system-level services and settings. These are NOT options from Home Manager.
 
     Args:
         query: Option name fragment or keyword (e.g., "nginx", "services.postgresql", "boot.loader")
-        limit: Max results 1-100 (default 20)
         channel: NixOS release - "unstable" or version like "24.11", "25.05"
     """
     try:
-        options = NixOSSearch.search_options(query, limit, channel)
+        result = NixOSSearch.search_options(query, _SEARCH_LIMIT, channel)
     except APIError as e:
         return _format_error(e)
 
-    if not options:
+    if not result.items:
         return f"No options found matching '{query}'"
 
-    header = f"Found {len(options)} options matching '{query}':\n"
-    return header + "\n\n".join(opt.format_short() for opt in options)
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} options:\n"
+    else:
+        header = f"Found {len(result.items)} options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
 
 
 @mcp.tool()
 async def nixos_get_package_details(name: str, channel: str = "unstable") -> str:
-    """Get full details for a specific NixOS package by exact name.
+    """Get details for a NixOS package by exact name.
 
     Returns version, description, homepage URL, and license. Use nixos_search_package
     first if you don't know the exact package name.
 
     Args:
-        name: Exact package name from search results (e.g., "git", "firefox", "python312")
+        name: Exact package name from search results (e.g., "git", "firefox")
         channel: NixOS release - "unstable" or version like "24.11", "25.05"
     """
     try:
@@ -132,28 +134,29 @@ async def nixos_channels() -> str:
 
 
 @mcp.tool()
-async def homemanager_search_option(query: str, limit: int = 20, release: str = "unstable") -> str:
+async def homemanager_search_option(query: str, release: str = "unstable") -> str:
     """Search Home Manager options for user environment configuration.
 
     Home Manager manages user dotfiles and programs: shells, editors, git, tmux, etc.
-    Use this for per-user config (home.nix). For system-level NixOS options, use
-    nixos_search_option instead.
+    Use this for per-user config (home.nix).
 
     Args:
         query: Option name or keyword (e.g., "git", "programs.zsh", "neovim plugin")
-        limit: Max results 1-100 (default 20)
         release: Home Manager release - "unstable" or version like "24.11", "25.05"
     """
     try:
-        options = HomeManagerSearch.search_options(query, limit, release)
+        result = HomeManagerSearch.search_options(query, _SEARCH_LIMIT, release)
     except APIError as e:
         return _format_error(e)
 
-    if not options:
+    if not result.items:
         return f"No Home Manager options found matching '{query}'"
 
-    header = f"Found {len(options)} Home Manager options matching '{query}':\n"
-    return header + "\n\n".join(opt.format_short() for opt in options)
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} Home Manager options:\n"
+    else:
+        header = f"Found {len(result.items)} Home Manager options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
 
 
 @mcp.tool()
