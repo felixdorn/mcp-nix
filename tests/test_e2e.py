@@ -49,3 +49,72 @@ async def test_get_option_details():
         assert result.content
         text = result.content[0].text
         assert "nginx" in text.lower()
+
+
+async def test_homemanager_search_option():
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("homemanager_search_option", {"query": "git", "limit": 3})
+        assert result.content
+        text = result.content[0].text
+        assert "git" in text.lower()
+
+
+async def test_homemanager_get_option_details():
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("homemanager_get_option_details", {"name": "programs.git.enable"})
+        assert result.content
+        text = result.content[0].text
+        assert "git" in text.lower()
+
+
+async def test_homemanager_releases():
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("homemanager_releases", {})
+        assert result.content
+        text = result.content[0].text
+        assert "unstable" in text.lower()
+
+
+# Tests for prefix/children behavior - prevents regression
+async def test_nixos_option_prefix_returns_children():
+    """Prefix like 'services.nginx' should return child options, not error."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("nixos_get_option_details", {"name": "services.nginx"})
+        assert result.content
+        text = result.content[0].text
+        # Should list children, not return "not found"
+        assert "child options" in text.lower()
+        assert "services.nginx." in text  # Should have actual child options
+
+
+async def test_homemanager_option_prefix_returns_children():
+    """Prefix like 'programs.git' should return child options, not error."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("homemanager_get_option_details", {"name": "programs.git"})
+        assert result.content
+        text = result.content[0].text
+        # Should list children, not return "not found"
+        assert "child options" in text.lower()
+        assert "programs.git." in text  # Should have actual child options
+
+
+async def test_nixos_option_leaf_returns_details():
+    """Leaf option like 'services.nginx.enable' should return full details."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("nixos_get_option_details", {"name": "services.nginx.enable"})
+        assert result.content
+        text = result.content[0].text
+        # Should have option details, not children list
+        assert "type:" in text.lower()
+        assert "child options" not in text.lower()
+
+
+async def test_homemanager_option_leaf_returns_details():
+    """Leaf option like 'programs.git.enable' should return full details."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("homemanager_get_option_details", {"name": "programs.git.enable"})
+        assert result.content
+        text = result.content[0].text
+        # Should have option details, not children list
+        assert "type:" in text.lower()
+        assert "child options" not in text.lower()

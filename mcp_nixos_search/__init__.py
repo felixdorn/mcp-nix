@@ -10,7 +10,7 @@ mcp = FastMCP("mcp-nixos-search")
 TOOL_CATEGORIES = {
     "packages": ["nixos_search_package", "nixos_get_package_details"],
     "options": ["nixos_search_option", "nixos_get_option_details", "nixos_channels"],
-    "homemanager": [],  # Future: home-manager tools
+    "homemanager": ["homemanager_search_option", "homemanager_get_option_details", "homemanager_releases"],
 }
 
 

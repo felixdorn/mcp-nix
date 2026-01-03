@@ -177,12 +177,15 @@ class NixOSSearch:
     """NixOS package and option search functionality."""
 
     @staticmethod
-    def _es_query(index: str, query: dict[str, Any], size: int = 20) -> list[dict[str, Any]]:
+    def _es_query(index: str, query: dict[str, Any], size: int = 20, from_: int = 0) -> list[dict[str, Any]]:
         api_url = get_api_url()
         auth = get_auth()
         try:
             resp = requests.post(
-                f"{api_url}/{index}/_search", json={"query": query, "size": size}, auth=auth, timeout=10
+                f"{api_url}/{index}/_search",
+                json={"query": query, "size": size, "from": from_},
+                auth=auth,
+                timeout=10,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -197,6 +200,21 @@ class NixOSSearch:
             raise APIError(str(exc)) from exc
         except Exception as exc:
             raise APIError(str(exc)) from exc
+
+    @staticmethod
+    def _es_query_all(index: str, query: dict[str, Any], batch_size: int = 100) -> list[dict[str, Any]]:
+        """Fetch all results using pagination."""
+        all_hits = []
+        from_ = 0
+        while True:
+            hits = NixOSSearch._es_query(index, query, size=batch_size, from_=from_)
+            if not hits:
+                break
+            all_hits.extend(hits)
+            if len(hits) < batch_size:
+                break
+            from_ += batch_size
+        return all_hits
 
     @staticmethod
     def _get_channel_index(channel: str) -> str:
@@ -270,6 +288,21 @@ class NixOSSearch:
         if not hits:
             return None
         return Option.model_validate(hits[0].get("_source", {}))
+
+    @staticmethod
+    def get_option_children(prefix: str, channel: str) -> list[Option]:
+        """Get all child options under a prefix (e.g., 'services.nginx')."""
+        index = NixOSSearch._get_channel_index(channel)
+        query = {
+            "bool": {
+                "must": [
+                    {"term": {"type": "option"}},
+                    {"prefix": {"option_name": f"{prefix}."}},
+                ]
+            }
+        }
+        hits = NixOSSearch._es_query_all(index, query)
+        return [Option.model_validate(hit.get("_source", {})) for hit in hits]
 
     @staticmethod
     def list_channels() -> list[Channel]:

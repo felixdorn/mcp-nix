@@ -111,3 +111,71 @@ class Channel(BaseModel):
         if self.status:
             lines.append(f"  Status: {self.status}")
         return "\n".join(lines)
+
+
+class HomeManagerOption(BaseModel):
+    """Home Manager option."""
+
+    title: str
+    type: str = ""
+    description: str = ""
+    default: str = ""
+    example: str = ""
+    declarations: list[dict] = Field(default_factory=list)
+
+    @field_validator("type", "default", "example", mode="before")
+    @classmethod
+    def coerce_none_to_str(cls, v):
+        return str(v) if v is not None else ""
+
+    @field_validator("description", mode="after")
+    @classmethod
+    def clean_description(cls, v):
+        return _strip_html(v) if v else ""
+
+    def format_short(self) -> str:
+        """Format for search results listing."""
+        lines = [f"• {self.title}"]
+        if self.type:
+            lines.append(f"  Type: {self.type}")
+        if self.description:
+            # Truncate long descriptions
+            desc = self.description
+            if len(desc) > 120:
+                desc = desc[:117] + "..."
+            lines.append(f"  {desc}")
+        return "\n".join(lines)
+
+    def __str__(self) -> str:
+        """Format for detailed info."""
+        result = _lines(
+            ("Option", self.title),
+            ("Type", self.type),
+            ("Description", self.description),
+            ("Default", self.default),
+            ("Example", self.example),
+        )
+        if self.declarations:
+            sources = [d.get("url", d.get("name", "")) for d in self.declarations]
+            sources = [s for s in sources if s]
+            if sources:
+                result += f"\nSource: {sources[0]}"
+        return result
+
+
+class HomeManagerRelease(BaseModel):
+    """Home Manager release/channel."""
+
+    name: str
+    value: str
+    is_default: bool = False
+
+    @field_validator("name", "value", mode="before")
+    @classmethod
+    def coerce_to_str(cls, v):
+        """Handle YAML parsing numeric values like 25.05 as floats."""
+        return str(v) if v is not None else ""
+
+    def __str__(self) -> str:
+        default_marker = " (default)" if self.is_default else ""
+        return f"• {self.name}{default_marker}\n  Branch: {self.value}"
