@@ -26,7 +26,7 @@ _release_cache: dict[str, "ReleaseData"] = {}
 
 def _get_cache_dir() -> Path:
     """Get the cache directory for Home Manager data."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nixos-search")) / "homemanager"
+    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix")) / "homemanager"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
 

@@ -22,7 +22,7 @@ class APIError(Exception):
 
 def _get_cache_path() -> Path:
     """Get the path to the config cache file."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nixos-search"))
+    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix"))
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / "config.json"
 

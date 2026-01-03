@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""MCP server for NixOS package and option search."""
+"""MCP server for Nixpkgs, NixOS and Home Manager."""
 
 import argparse
 
 from fastmcp import FastMCP
 
-mcp = FastMCP("mcp-nixos-search")
+mcp = FastMCP("mcp-nix")
 
 # Tool categories: maps category name to list of tool names
 TOOL_CATEGORIES = {
@@ -18,7 +18,7 @@ TOOL_CATEGORIES = {
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
-        description="MCP server for NixOS package and option search",
+        description="MCP server for Nixpkgs, NixOS and Home Manager",
     )
     parser.add_argument(
         "--packages",

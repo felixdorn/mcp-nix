@@ -1,7 +1,7 @@
 [project]
 name = "mcp-nix"
 version = "0.1.0"
-description = "MCP server for searching NixOS packages, options, and Home Manager options"
+description = "MCP server for Nixpkgs, NixOS and Home Manager"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.13"
@@ -24,11 +24,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: System :: Systems Administration",
-    "Typing :: Typed",
 ]
 dependencies = [
     "requests>=2.31.0",
@@ -45,10 +40,10 @@ Repository = "https://github.com/felixdorn/mcp-nix"
 Issues = "https://github.com/felixdorn/mcp-nix/issues"
 
 [project.scripts]
-mcp-nixos-search = "mcp_nixos_search:main"
+mcp-nix = "mcp_nix:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["mcp_nixos_search"]
+packages = ["mcp_nix"]
 
 [build-system]
 requires = ["hatchling"]

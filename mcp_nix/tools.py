@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""MCP tools for NixOS search."""
+"""MCP tools for Nixpkgs, NixOS and Home Manager."""
 
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
@@ -19,14 +19,14 @@ def _format_error(e: Exception) -> str:
 
 @mcp.tool()
 async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
-    """Search for NixOS packages by name or description.
+    """Search for Nixpkgs packages by name or description.
 
     Returns package names, versions, and descriptions. For full details (homepage, license), use
     show_nixpkgs_package with the exact package name.
 
     Args:
         query: Package name or keyword (e.g., "git", "video editor")
-        channel: NixOS release channel - "unstable" (latest) or version like "24.11", "25.05"
+        channel: Nixpkgs channel - "unstable" (latest) or version like "24.11", "25.05"
     """
     try:
         result = NixOSSearch.search_packages(query, _SEARCH_LIMIT, channel)
@@ -70,14 +70,14 @@ async def search_nixos_options(query: str, channel: str = "unstable") -> str:
 
 @mcp.tool()
 async def show_nixpkgs_package(name: str, channel: str = "unstable") -> str:
-    """Get details for a NixOS package by exact name.
+    """Get details for a Nixpkgs package by exact name.
 
     Returns version, description, homepage URL, and license. Use search_nixpkgs
     first if you don't know the exact package name.
 
     Args:
         name: Exact package name from search results (e.g., "git", "firefox")
-        channel: NixOS release - "unstable" or version like "24.11", "25.05"
+        channel: Nixpkgs channel - "unstable" or version like "24.11", "25.05"
     """
     try:
         pkg = NixOSSearch.get_package(name, channel)

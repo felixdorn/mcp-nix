@@ -38,7 +38,7 @@ def _strip_html(text: str) -> str:
 
 
 class Package(BaseModel):
-    """NixOS package."""
+    """Nixpkgs package."""
 
     name: str = Field(alias="package_pname")
     version: str = Field(alias="package_pversion")

@@ -1,4 +1,4 @@
-# MCP for Nix*
+# A tasteful MCP for Nix*
 
 ## Tools
 

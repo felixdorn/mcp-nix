@@ -2,8 +2,8 @@
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from mcp_nixos_search import mcp
-from mcp_nixos_search import tools as _  # noqa: F401 - registers tools
+from mcp_nix import mcp
+from mcp_nix import tools as _  # noqa: F401 - registers tools
 
 pytestmark = pytest.mark.anyio
 
