@@ -48,7 +48,7 @@ def main() -> None:
     # Import tools (registers them all with mcp)
     from . import tools as _tools  # noqa: F401
 
-    # Disable tools based on CLI flags
+    # Remove tools based on CLI flags
     for category, enabled in [
         ("packages", args.packages),
         ("options", args.options),
@@ -56,9 +56,7 @@ def main() -> None:
     ]:
         if not enabled:
             for tool_name in TOOL_CATEGORIES[category]:
-                tool = mcp.get_tool(tool_name)
-                if tool:
-                    tool.disable()
+                mcp.remove_tool(tool_name)
 
     mcp.run()
 
