@@ -9,6 +9,9 @@ jobs:
   # Build and publish pyixx first
   pyixx:
     uses: ./.github/workflows/pyixx.yml
+    permissions:
+      contents: read
+      id-token: write
     secrets: inherit
 
   publish:
