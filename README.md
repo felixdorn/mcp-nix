@@ -5,39 +5,39 @@
 ## Upcoming
 * Read declaration/derivation file.
 
-## Tools
+## Tool categories
 
 ### Included by default
 
-| Category | ID | Usage |
-|----------|-----|-------------|
-| **Nixpkgs** | `nixpkgs` | Search and show Nixpkgs packages |
-| **NixOS** | `nixos` | Search NixOS options and list channels |
+| Category | ID | Tools |
+|----------|-----|-------|
+| **Nixpkgs** | `nixpkgs` | `search_nixpkgs`, `show_nixpkgs_package` |
+| **NixOS** | `nixos` | `search_nixos_options`, `show_nixos_option`, `list_nixos_channels` |
 
 ### Excluded by default
 
-| Category | ID | Usage |
-|----------|-----|-------------|
-| **Home Manager** | `homemanager` | Search Home Manager options and list releases |
-| **Nixvim** | `nixvim` | Search and show Nixvim options |
-| **nix-darwin** | `nix-darwin` | Search and show nix-darwin options |
-| **NixHub** | `nixhub` | Find the nixpkgs commit where a version of a package exists |
+| Category | ID | Tools |
+|----------|-----|-------|
+| **Home Manager** | `homemanager` | `search_homemanager_options`, `show_homemanager_option`, `list_homemanager_releases` |
+| **Nixvim** | `nixvim` | `search_nixvim_options`, `show_nixvim_option` |
+| **nix-darwin** | `nix-darwin` | `search_nix_darwin_options`, `show_nix_darwin_option` |
+| **NixHub** | `nixhub` | `list_package_versions`, `find_nixpkgs_commit_with_package_version` |
 
 ### Including tools
 
 * **By category**
   * Pass the category's ID as an argument: `--homemanager --nixvim`
 * **By name**
-  * Use --include: `--include=list_package_versions`
+  * Use --include: `--include=list_package_versions,...`
 
 ### Excluding tools
 
 * **By category**
   * Prefix the category's ID by "no-": `--no-nixos`
 * **By name**
-  * Use --exclude: `--exclude=find_nixpkgs_commit_with_package_version`
+  * Use --exclude: `--exclude=find_nixpkgs_commit_with_package_version,...`
 
-### List of tools
+## List of tools
 
 | Tool | Usage |
 |------|-------------|
