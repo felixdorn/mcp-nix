@@ -35,6 +35,7 @@ class Package(BaseModel):
     description: str = Field(default="", alias="package_description")
     homepage: str = ""
     licenses: list[str] = Field(default_factory=list, alias="package_license_set")
+    position: str = Field(default="", alias="package_position")
 
     @field_validator("homepage", mode="before")
     @classmethod
@@ -42,6 +43,11 @@ class Package(BaseModel):
         if isinstance(v, list):
             return v[0] if v else ""
         return v or ""
+
+    @field_validator("position", mode="before")
+    @classmethod
+    def coerce_position(cls, v):
+        return v if v is not None else ""
 
     def format_short(self) -> str:
         """Format for search results listing."""
@@ -69,6 +75,7 @@ class Option(BaseModel):
     description: str = Field(default="", alias="option_description")
     default: str = Field(default="", alias="option_default")
     example: str = Field(default="", alias="option_example")
+    declarations: list[str] = Field(default_factory=list, alias="option_source")
 
     @field_validator("type", "default", "example", mode="before")
     @classmethod
@@ -79,6 +86,15 @@ class Option(BaseModel):
     @classmethod
     def clean_description(cls, v):
         return html_to_text(v) if v else ""
+
+    @field_validator("declarations", mode="before")
+    @classmethod
+    def coerce_declarations(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        return [v] if v else []
 
     def format_short(self) -> str:
         """Format for search results listing."""

@@ -15,6 +15,13 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     "nixvim": ["search_nixvim_options", "show_nixvim_option"],
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option"],
     "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
+    "declarations": [
+        "read_derivation",
+        "read_nixos_module",
+        "read_home_module",
+        "read_nixvim_declaration",
+        "read_nix_darwin_declaration",
+    ],
 }
 
 CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
@@ -24,6 +31,7 @@ CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "nixvim": False,
     "nix-darwin": False,
     "nixhub": False,
+    "declarations": False,
 }
 
 # All available tool names (flattened from categories)
@@ -140,6 +148,12 @@ def parse_args() -> argparse.Namespace:
         help="Include NixHub version tools (default: excluded)",
     )
     parser.add_argument(
+        "--declarations",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Include source code reading tools (default: excluded)",
+    )
+    parser.add_argument(
         "--include",
         type=str,
         default="",
@@ -188,6 +202,7 @@ def main() -> None:
         "nixvim": args.nixvim,
         "nix-darwin": args.nix_darwin,
         "nixhub": args.nixhub,
+        "declarations": args.declarations,
     }
 
     included_tools = resolve_included_tools(category_overrides, include, exclude)

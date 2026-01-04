@@ -173,3 +173,95 @@ async def test_nixhub_package_not_found():
         assert result.content
         text = result.content[0].text
         assert "error" in text.lower() or "not found" in text.lower()
+
+
+# Declaration tools tests
+async def test_read_derivation():
+    """Read derivation source for a package."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("read_derivation", {"name": "git"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "Source:" in text
+        assert "lines" in text
+        assert "stdenv" in text or "mkDerivation" in text
+
+
+async def test_read_nixos_module():
+    """Read NixOS module source for an option."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("read_nixos_module", {"name": "services.nginx.enable"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "Source:" in text
+        assert "lines" in text
+        assert "nginx" in text.lower()
+
+
+async def test_read_home_module():
+    """Read Home Manager module source for an option."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("read_home_module", {"name": "programs.git.enable"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "Source:" in text
+        assert "lines" in text
+        assert "git" in text.lower()
+
+
+async def test_read_nixvim_declaration():
+    """Read NixVim declaration source for an option."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("read_nixvim_declaration", {"name": "colorscheme"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "Source:" in text
+        assert "lines" in text
+
+
+async def test_read_nix_darwin_declaration():
+    """Read nix-darwin declaration source for an option."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("read_nix_darwin_declaration", {"name": "system.defaults.dock.autohide"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "Source:" in text
+        assert "lines" in text
+
+
+async def test_show_nixpkgs_package_has_reference():
+    """show_nixpkgs_package should include Reference with line count."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("show_nixpkgs_package", {"name": "git"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "lines" in text
+        assert "read_derivation" in text
+
+
+async def test_show_nixos_option_has_reference():
+    """show_nixos_option should include Reference with line count."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("show_nixos_option", {"name": "services.nginx.enable"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "lines" in text
+        assert "read_nixos_module" in text
+
+
+async def test_show_homemanager_option_has_reference():
+    """show_homemanager_option should include Reference with line count."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("show_homemanager_option", {"name": "programs.git.enable"})
+        assert result.content
+        text = result.content[0].text
+        assert "Reference:" in text
+        assert "lines" in text
+        assert "read_home_module" in text

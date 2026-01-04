@@ -6,8 +6,28 @@ from .homemanager import HomeManagerSearch, InvalidReleaseError
 from .nixhub import NixhubSearch, PackageNotFoundError, VersionNotFoundError
 from .nuschtos import InvalidProjectError, NuschtosSearch
 from .search import APIError, InvalidChannelError, NixOSSearch
+from .sources import fetch_source, get_line_count
 
 _SEARCH_LIMIT = 20
+
+
+def _position_to_github_url(position: str, channel: str) -> str | None:
+    """Convert nixpkgs position to GitHub URL."""
+    if not position:
+        return None
+    # Position format: path/to/file.nix:line
+    parts = position.split(":")
+    if not parts:
+        return None
+    file_path = parts[0]
+    branch = "nixos-unstable" if channel == "unstable" else f"nixos-{channel}"
+    return f"https://github.com/NixOS/nixpkgs/blob/{branch}/{file_path}"
+
+
+def _nixos_decl_to_github_url(decl: str, channel: str) -> str:
+    """Convert NixOS declaration path to GitHub URL."""
+    branch = "nixos-unstable" if channel == "unstable" else f"nixos-{channel}"
+    return f"https://github.com/NixOS/nixpkgs/blob/{branch}/{decl}"
 
 
 def _format_error(e: Exception) -> str:
@@ -98,7 +118,19 @@ async def show_nixpkgs_package(name: str, channel: str = "unstable") -> str:
     if pkg is None:
         return f"Error: Package '{name}' not found"
 
-    return str(pkg)
+    result = str(pkg)
+
+    # Add source reference with line count
+    if pkg.position:
+        url = _position_to_github_url(pkg.position, channel)
+        if url:
+            line_count = get_line_count(url)
+            if line_count:
+                result += f"\nReference: {url} ({line_count} lines, use read_derivation to read)"
+            else:
+                result += f"\nReference: {url}"
+
+    return result
 
 
 @mcp.tool()
@@ -116,7 +148,15 @@ async def show_nixos_option(name: str, channel: str = "unstable") -> str:
         # Try exact match first
         opt = NixOSSearch.get_option(name, channel)
         if opt is not None:
-            return str(opt)
+            result = str(opt)
+            if opt.declarations:
+                url = _nixos_decl_to_github_url(opt.declarations[0], channel)
+                line_count = get_line_count(url)
+                if line_count:
+                    result += f"\nReference: {url} ({line_count} lines, use read_nixos_module to read)"
+                else:
+                    result += f"\nReference: {url}"
+            return result
 
         # No exact match - get all children with this prefix
         children = NixOSSearch.get_option_children(name, channel)
@@ -186,7 +226,16 @@ async def show_homemanager_option(name: str, release: str = "unstable") -> str:
         # Try exact match first
         opt = HomeManagerSearch.get_option(name, release)
         if opt is not None:
-            return str(opt)
+            result = str(opt)
+            if opt.declarations:
+                url = opt.declarations[0].get("url", "")
+                if url:
+                    line_count = get_line_count(url)
+                    if line_count:
+                        result += f"\nReference: {url} ({line_count} lines, use read_home_module to read)"
+                    else:
+                        result += f"\nReference: {url}"
+            return result
 
         # No exact match - get all children with this prefix
         children = HomeManagerSearch.get_option_children(name, release)
@@ -254,7 +303,15 @@ async def show_nixvim_option(name: str) -> str:
         # Try exact match first
         opt = NuschtosSearch.get_option(name, "nixvim")
         if opt is not None:
-            return str(opt)
+            result = str(opt)
+            if opt.declarations:
+                url = opt.declarations[0]
+                line_count = get_line_count(url)
+                if line_count:
+                    result += f"\nReference: {url} ({line_count} lines, use read_nixvim_declaration to read)"
+                else:
+                    result += f"\nReference: {url}"
+            return result
 
         # No exact match - get all children with this prefix
         children = NuschtosSearch.get_option_children(name, "nixvim")
@@ -306,7 +363,15 @@ async def show_nix_darwin_option(name: str) -> str:
         # Try exact match first
         opt = NuschtosSearch.get_option(name, "nix-darwin")
         if opt is not None:
-            return str(opt)
+            result = str(opt)
+            if opt.declarations:
+                url = opt.declarations[0]
+                line_count = get_line_count(url)
+                if line_count:
+                    result += f"\nReference: {url} ({line_count} lines, use read_nix_darwin_declaration to read)"
+                else:
+                    result += f"\nReference: {url}"
+            return result
 
         # No exact match - get all children with this prefix
         children = NuschtosSearch.get_option_children(name, "nix-darwin")
@@ -360,3 +425,169 @@ async def find_nixpkgs_commit_with_package_version(name: str, version: str) -> s
         return _format_error(e)
 
     return str(commit)
+
+
+@mcp.tool()
+async def read_derivation(name: str, channel: str = "unstable") -> str:
+    """Read the Nix source code for a package derivation.
+
+    Fetches and returns the .nix file that defines a package. Use search_nixpkgs
+    first if you don't know the exact package name.
+
+    Args:
+        name: Exact package name (e.g., "git", "firefox")
+        channel: NixOS channel - "unstable" or version like "24.11", "25.05"
+    """
+    try:
+        pkg = NixOSSearch.get_package(name, channel)
+    except APIError as e:
+        return _format_error(e)
+
+    if pkg is None:
+        return f"Error: Package '{name}' not found"
+
+    if not pkg.position:
+        return f"Error: No source position available for '{name}'"
+
+    url = _position_to_github_url(pkg.position, channel)
+    if not url:
+        return f"Error: Could not determine source URL for '{name}'"
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
+async def read_nixos_module(name: str, channel: str = "unstable") -> str:
+    """Read the Nix source code for a NixOS option declaration.
+
+    Fetches and returns the module file that declares a NixOS option.
+    Use search_nixos_options or show_nixos_option first to find the option name.
+
+    Args:
+        name: Exact option path (e.g., "services.nginx.enable")
+        channel: NixOS release - "unstable" or version like "24.11", "25.05"
+    """
+    try:
+        opt = NixOSSearch.get_option(name, channel)
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No source declaration available for '{name}'"
+
+    url = _nixos_decl_to_github_url(opt.declarations[0], channel)
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
+async def read_home_module(name: str, release: str = "unstable") -> str:
+    """Read the Nix source code for a Home Manager option declaration.
+
+    Fetches and returns the module file that declares a Home Manager option.
+    Use search_homemanager_options or show_homemanager_option first to find the option.
+
+    Args:
+        name: Exact option path (e.g., "programs.git.enable")
+        release: Home Manager release - "unstable" or version like "24.11", "25.05"
+    """
+    try:
+        opt = HomeManagerSearch.get_option(name, release)
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No source declaration available for '{name}'"
+
+    decl = opt.declarations[0]
+    url = decl.get("url", "")
+    if not url:
+        decl_name = decl.get("name", "")
+        if decl_name:
+            return f"Error: Declaration '{decl_name}' is not a fetchable URL"
+        return f"Error: No fetchable URL in declaration for '{name}'"
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
+async def read_nixvim_declaration(name: str) -> str:
+    """Read the Nix source code for a NixVim option declaration.
+
+    Fetches and returns the module file that declares a NixVim option.
+    Use search_nixvim_options or show_nixvim_option first to find the option.
+
+    Args:
+        name: Exact option path (e.g., "colorschemes.catppuccin.enable")
+    """
+    try:
+        opt = NuschtosSearch.get_option(name, "nixvim")
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No declaration available for '{name}'"
+
+    url = opt.declarations[0]
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
+async def read_nix_darwin_declaration(name: str) -> str:
+    """Read the Nix source code for a nix-darwin option declaration.
+
+    Fetches and returns the module file that declares a nix-darwin option.
+    Use search_nix_darwin_options or show_nix_darwin_option first to find the option.
+
+    Args:
+        name: Exact option path (e.g., "system.defaults.dock.autohide")
+    """
+    try:
+        opt = NuschtosSearch.get_option(name, "nix-darwin")
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No declaration available for '{name}'"
+
+    url = opt.declarations[0]
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
