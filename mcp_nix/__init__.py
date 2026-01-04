@@ -2,6 +2,7 @@
 """MCP server for Nixpkgs, NixOS and Home Manager."""
 
 import argparse
+import os
 
 from fastmcp import FastMCP
 
@@ -217,7 +218,10 @@ def main() -> None:
         if tool not in included_tools:
             mcp.remove_tool(tool)
 
-    mcp.run()
+    try:
+        mcp.run()
+    except KeyboardInterrupt:
+        os._exit(0)
 
 
 if __name__ == "__main__":
