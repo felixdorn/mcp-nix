@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 
 mcp = FastMCP("mcp-nix")
 
-# Tool categories: maps category name to list of tool names
+# maps category ID to list of tool names
 TOOL_CATEGORIES: dict[str, list[str]] = {
     "nixpkgs": ["search_nixpkgs", "show_nixpkgs_package"],
     "nixos": ["search_nixos_options", "show_nixos_option", "list_nixos_channels"],
@@ -17,8 +17,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
 }
 
-# Default included state for each category
-CATEGORY_DEFAULTS: dict[str, bool] = {
+CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "nixpkgs": True,
     "nixos": True,
     "homemanager": False,
@@ -54,16 +53,16 @@ def resolve_included_tools(
     4. Otherwise: use category's effective state (override or default)
 
     Args:
-        category_overrides: Category name -> True/False/None (None = use default)
+        category_overrides: Category ID -> True/False/None (None = use default)
         include: Set of tool names to explicitly include
-        exclude: Set of tool names or category names to explicitly exclude
+        exclude: Set of tool names or category IDs to explicitly exclude
 
     Returns:
         Set of tool names that should be included
     """
     included_tools: set[str] = set()
 
-    # Expand category names in exclude to their tools
+    # Expand category IDs in exclude to their tools
     excluded_categories: set[str] = set()
     excluded_tools: set[str] = set()
     for item in exclude:
@@ -75,7 +74,7 @@ def resolve_included_tools(
     for category, tools in TOOL_CATEGORIES.items():
         # Get effective category state
         override = category_overrides.get(category)
-        category_included = override if override is not None else CATEGORY_DEFAULTS.get(category, False)
+        category_included = override if override is not None else CATEGORY_DEFAULT_INCLUSION_STATE.get(category, False)
         category_explicitly_excluded = override is False
 
         for tool in tools:
@@ -187,17 +186,14 @@ def main() -> None:
         "nixos": args.nixos,
         "homemanager": args.homemanager,
         "nixvim": args.nixvim,
-        "nix-darwin": getattr(args, "nix_darwin", None),
+        "nix-darwin": args.nix_darwin,
         "nixhub": args.nixhub,
     }
 
-    # Resolve included tools
     included_tools = resolve_included_tools(category_overrides, include, exclude)
 
-    # Import tools (registers them all with mcp)
     from . import tools as _tools  # noqa: F401
 
-    # Remove tools that should not be included
     for tool in ALL_TOOLS:
         if tool not in included_tools:
             mcp.remove_tool(tool)

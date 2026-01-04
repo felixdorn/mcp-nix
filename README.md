@@ -9,61 +9,39 @@
 
 ### Included by default
 
-* **Nixpkgs** `nixpkgs`
-  * Search Nixpkgs
-  * Show Nixpkgs package
-* **NixOS** `nixos`
-  * Search NixOS options
-  * List NixOS channels
+| Category | ID | Usage |
+|----------|-----|-------------|
+| Nixpkgs | `nixpkgs` | Search and show Nixpkgs packages |
+| NixOS | `nixos` | Search NixOS options and list channels |
 
 ### Excluded by default
 
-* **Home Manager** `homemanager`
-  * Search Home Manager options
-  * List Home Manager releases
-* **Nixvim** `nixvim`
-  * Search and show Nixvim options
-* **nix-darwin** `nix-darwin`
-  * Search and show nix-darwin options
-* **NixHub** `nixhub`
-  * List package versions
-  * Find the nixpkgs commit where a version of a package exists
+| Category | ID | Usage |
+|----------|-----|-------------|
+| Home Manager | `homemanager` | Search Home Manager options and list releases |
+| Nixvim | `nixvim` | Search and show Nixvim options |
+| nix-darwin | `nix-darwin` | Search and show nix-darwin options |
+| NixHub | `nixhub` | Find the nixpkgs commit where a version of a package exists |
 
 ### Including tools
 
-* **Categories**
-  * You can include groups of tools such as `uvx mcp-nix --homemanager --nixvim`
-* **Individual tools**
-  * `uvx mcp-nix --include=list_package_versions`
-
-You can find the group names and the tool names in the [reference](#reference).
+* **By category**
+  * Pass the category's ID as an argument: `uvx mcp-nix --homemanager --nixvim`
+* **By name**
+  * Use --include: `uvx mcp-nix --include=list_package_versions`
 
 ### Excluding tools
 
 Excluding tools you don't use reduces context usage and reduces the chance that the model picks the wrong tool.
 
-* **Categories**
-  * You can include groups of tools such as `uvx mcp-nix --no-nixos --nix-darwin`
-* **Individual tools**
-  * `uvx mcp-nix --exclude=find_nixpkgs_commit_with_package_version`
+* **By category**
+  * Prefix the category's ID by "no": `uvx mcp-nix --no-nixos --nix-darwin`
+* **By name**
+  * Use --exclude: `uvx mcp-nix --exclude=find_nixpkgs_commit_with_package_version`
 
-You can find the group names and the tool names in the [reference](#reference).
+### List of tools
 
-### Reference
-
-#### Categories
-
-| Category | Included by default | Flag |
-|----------|:--------:|------|
-| `nixpkgs` | Yes | `--nixpkgs` / `--no-nixpkgs` |
-| `nixos` | Yes | `--nixos` / `--no-nixos` |
-| `homemanager` | | `--homemanager` / `--no-homemanager` |
-| `nixvim` | | `--nixvim` / `--no-nixvim` |
-| `nix-darwin` | | `--nix-darwin` / `--no-nix-darwin` |
-| `nixhub` | | `--nixhub` / `--no-nixhub` |
-
-#### Individual tools
-| Tool | Included by default | Description |
+| Tool | Included by default | Usage |
 |------|:-------:|-------------|
 | **nixpkgs** | | |
 | `search_nixpkgs` | Yes | Search for Nixpkgs packages by name or description |
