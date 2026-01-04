@@ -4,8 +4,8 @@
 
 ## Ecosystem coverage
 
-- **Nixpkgs**
-- **NixOS**
+- Nixpkgs
+- **NixOS
 - Home Manager
 - Nixvim
 - nix-darwin
