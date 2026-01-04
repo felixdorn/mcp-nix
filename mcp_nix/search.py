@@ -104,6 +104,8 @@ def fetch_config() -> ElasticsearchConfig:
     if not all([schema_match, url_match, username_match, password_match, channels_match]):
         raise APIError("Failed to extract credentials from search.nixos.org.")
 
+    # Type narrowing: all matches are guaranteed non-None after the check above
+    assert schema_match and url_match and username_match and password_match and channels_match
     channels_data = json.loads(channels_match.group(1))
 
     return ElasticsearchConfig(
@@ -134,10 +136,7 @@ def get_channels() -> dict[str, str]:
     for ch in config.channels:
         branch = ch["branch"]
         channel_id = ch["id"]
-        if branch.startswith("nixos-"):
-            suffix = branch[6:]
-        else:
-            suffix = branch
+        suffix = branch[6:] if branch.startswith("nixos-") else branch
         index = f"latest-{config.schema_version}-nixos-{suffix}"
         channels[channel_id] = index
     return channels

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "pyixx"
+version = "0.1.0"
+description = "Python bindings for libixx - NüschtOS search index"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.13"
+authors = [
+    { name = "Félix Dorn", email = "dorn@xfe.li" }
+]
+keywords = ["nix", "nixos", "search", "index", "nuschtos"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+[project.urls]
+Homepage = "https://github.com/NuschtOS/ixx"
+Repository = "https://github.com/felixdorn/mcp-nix"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]

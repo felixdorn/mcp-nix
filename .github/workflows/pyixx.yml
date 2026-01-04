@@ -1,0 +1,182 @@
+name: pyixx
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'pyixx/**'
+      - '.github/workflows/pyixx.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'pyixx/**'
+      - '.github/workflows/pyixx.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+          - runner: ubuntu-22.04
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: 3.x
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1.49
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: 'true'
+          manylinux: auto
+          working-directory: pyixx
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: pyixx/dist
+
+  musllinux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+          - runner: ubuntu-22.04
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: 3.x
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1.49
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: 'true'
+          manylinux: musllinux_1_2
+          working-directory: pyixx
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-musllinux-${{ matrix.platform.target }}
+          path: pyixx/dist
+
+  macos:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: macos-13
+            target: x86_64
+          - runner: macos-14
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: 3.x
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1.49
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: 'true'
+          working-directory: pyixx
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-macos-${{ matrix.platform.target }}
+          path: pyixx/dist
+
+  windows:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: windows-latest
+            target: x64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: 3.x
+          architecture: ${{ matrix.platform.target }}
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1.49
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: 'true'
+          working-directory: pyixx
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-windows-${{ matrix.platform.target }}
+          path: pyixx/dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1.49
+        with:
+          command: sdist
+          args: --out dist
+          working-directory: pyixx
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-sdist
+          path: pyixx/dist
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [linux, musllinux, macos, windows, sdist]
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1.49
+        with:
+          command: upload
+          args: --non-interactive --skip-existing dist/*

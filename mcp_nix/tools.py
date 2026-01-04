@@ -3,6 +3,7 @@
 
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
+from .nuschtos import InvalidProjectError, NuschtosSearch
 from .search import APIError, InvalidChannelError, NixOSSearch
 
 _SEARCH_LIMIT = 20
@@ -14,6 +15,8 @@ def _format_error(e: Exception) -> str:
         return f"Error: Invalid channel '{e.channel}'. Available: {', '.join(e.available)}"
     if isinstance(e, InvalidReleaseError):
         return f"Error: Invalid release '{e.release}'. Available: {', '.join(e.available)}"
+    if isinstance(e, InvalidProjectError):
+        return f"Error: Invalid project '{e.project}'. Available: {', '.join(e.available)}"
     return f"Error: {e}"
 
 
@@ -202,3 +205,107 @@ async def list_homemanager_releases() -> str:
 
     header = "Home Manager Releases:\n"
     return header + "\n\n".join(str(r) for r in releases)
+
+
+@mcp.tool()
+async def search_nixvim_options(query: str) -> str:
+    """Search NixVim configuration options.
+
+    NixVim is a Neovim configuration framework for Nix. Search for plugins,
+    colorschemes, keymaps, and other Neovim configuration options.
+
+    Args:
+        query: Option name or keyword (e.g., "colorscheme", "plugins.telescope", "keymaps")
+    """
+    try:
+        result = NuschtosSearch.search_options(query, _SEARCH_LIMIT, "nixvim")
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No NixVim options found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} NixVim options:\n"
+    else:
+        header = f"Found {len(result.items)} NixVim options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
+
+
+@mcp.tool()
+async def show_nixvim_option(name: str) -> str:
+    """Get details for a NixVim option, or list all children if given a prefix.
+
+    For leaf options like "colorschemes.catppuccin.enable", returns type, default, and description.
+    For prefixes like "colorschemes.catppuccin", lists ALL child options exhaustively.
+
+    Args:
+        name: Option path or prefix (e.g., "colorschemes.catppuccin.enable" or "plugins.telescope")
+    """
+    try:
+        # Try exact match first
+        opt = NuschtosSearch.get_option(name, "nixvim")
+        if opt is not None:
+            return str(opt)
+
+        # No exact match - get all children with this prefix
+        children = NuschtosSearch.get_option_children(name, "nixvim")
+        if children:
+            header = f"'{name}' has {len(children)} child options:\n"
+            return header + "\n\n".join(o.format_short() for o in children)
+
+        return f"No option or children found for '{name}'"
+    except APIError as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def search_nix_darwin_options(query: str) -> str:
+    """Search nix-darwin configuration options for macOS.
+
+    nix-darwin provides Nix modules for managing macOS system configuration,
+    similar to NixOS but for Darwin/macOS systems.
+
+    Args:
+        query: Option name or keyword (e.g., "homebrew", "system.defaults", "launchd")
+    """
+    try:
+        result = NuschtosSearch.search_options(query, _SEARCH_LIMIT, "nix-darwin")
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No nix-darwin options found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} nix-darwin options:\n"
+    else:
+        header = f"Found {len(result.items)} nix-darwin options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
+
+
+@mcp.tool()
+async def show_nix_darwin_option(name: str) -> str:
+    """Get details for a nix-darwin option, or list all children if given a prefix.
+
+    For leaf options like "system.defaults.dock.autohide", returns type, default, and description.
+    For prefixes like "system.defaults.dock", lists ALL child options exhaustively.
+
+    Args:
+        name: Option path or prefix (e.g., "system.defaults.dock.autohide" or "homebrew")
+    """
+    try:
+        # Try exact match first
+        opt = NuschtosSearch.get_option(name, "nix-darwin")
+        if opt is not None:
+            return str(opt)
+
+        # No exact match - get all children with this prefix
+        children = NuschtosSearch.get_option_children(name, "nix-darwin")
+        if children:
+            header = f"'{name}' has {len(children)} child options:\n"
+            return header + "\n\n".join(o.format_short() for o in children)
+
+        return f"No option or children found for '{name}'"
+    except APIError as e:
+        return _format_error(e)

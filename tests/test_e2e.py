@@ -7,6 +7,7 @@ from mcp_nix import tools as _  # noqa: F401 - registers tools
 
 pytestmark = pytest.mark.anyio
 
+
 async def test_list_tools():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         tools = await client.list_tools()
@@ -15,12 +16,14 @@ async def test_list_tools():
         assert "search_nixos_options" in tool_names
         assert "list_nixos_channels" in tool_names
 
+
 async def test_search_package():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_nixpkgs", {"query": "git"})
         assert result.content
         text = result.content[0].text
         assert "git" in text.lower()
+
 
 async def test_search_option():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
@@ -29,6 +32,7 @@ async def test_search_option():
         text = result.content[0].text
         assert "nginx" in text.lower()
 
+
 async def test_channels():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("list_nixos_channels", {})
@@ -36,12 +40,14 @@ async def test_channels():
         text = result.content[0].text
         assert "unstable" in text.lower()
 
+
 async def test_get_package_details():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("show_nixpkgs_package", {"name": "git"})
         assert result.content
         text = result.content[0].text
         assert "git" in text.lower()
+
 
 async def test_get_option_details():
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
@@ -118,3 +124,22 @@ async def test_homemanager_option_leaf_returns_details():
         # Should have option details, not children list
         assert "type:" in text.lower()
         assert "child options" not in text.lower()
+
+
+async def test_nixvim_search_option():
+    """Search NixVim options."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("search_nixvim_options", {"query": "colorscheme"})
+        assert result.content
+        text = result.content[0].text
+        assert "colorscheme" in text.lower()
+
+
+async def test_nixvim_get_option_details():
+    """Get NixVim option details."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("show_nixvim_option", {"name": "colorscheme"})
+        assert result.content
+        text = result.content[0].text
+        assert "colorscheme" in text.lower()
+        assert "type:" in text.lower()

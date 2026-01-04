@@ -63,11 +63,31 @@
 
           # Base python set with pyproject.nix builders
           pythonBase = pkgs.callPackage pyproject-nix.build.packages { inherit python; };
+
+          # Custom overlay for pyixx (maturin/Rust build)
+          pyixxOverlay = final: prev: {
+            pyixx = prev.pyixx.overrideAttrs (old: {
+              nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+                pkgs.rustPlatform.cargoSetupHook
+                pkgs.rustPlatform.maturinBuildHook
+                pkgs.cargo
+                pkgs.rustc
+              ];
+
+              cargoDeps = pkgs.rustPlatform.importCargoLock {
+                lockFile = ./pyixx/Cargo.lock;
+                outputHashes = {
+                  "libixx-0.0.0-git" = "sha256-15Y6isGV3x4wqqwOhHdHs26P6hF7XAfc6izJ/oA7yBA=";
+                };
+              };
+            });
+          };
         in
         pythonBase.overrideScope (
           lib.composeManyExtensions [
             pyproject-build-systems.overlays.default
             overlay
+            pyixxOverlay
           ]
         )
       );

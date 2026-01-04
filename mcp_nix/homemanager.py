@@ -6,11 +6,11 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from lunr import lunr
-from lunr.index import Index
 import platformdirs
 import requests
 import yaml
+from lunr import lunr
+from lunr.index import Index
 
 from .models import HomeManagerOption, HomeManagerRelease, SearchResult
 from .search import APIError, InvalidLimitError
@@ -291,9 +291,7 @@ class HomeManagerSearch:
         prefix_dot = f"{prefix}."
 
         return [
-            HomeManagerOption.model_validate(opt)
-            for opt in data.options
-            if opt.get("title", "").startswith(prefix_dot)
+            HomeManagerOption.model_validate(opt) for opt in data.options if opt.get("title", "").startswith(prefix_dot)
         ]
 
     @staticmethod

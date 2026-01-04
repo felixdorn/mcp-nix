@@ -1,17 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Pydantic models for search.nixos.org results."""
 
-import re
 from dataclasses import dataclass
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
-T = TypeVar("T")
+from .utils import html_to_text
 
 
 @dataclass
-class SearchResult(Generic[T]):
+class SearchResult[T]:
     """Search result with items and total count."""
 
     items: list[T]
@@ -27,14 +25,6 @@ def _lines(*fields: tuple[str, str | list]) -> str:
         if val:
             result.append(f"{label}: {val}")
     return "\n".join(result)
-
-
-def _strip_html(text: str) -> str:
-    """Remove HTML tags from text."""
-    if "<rendered-html>" in text:
-        text = text.replace("<rendered-html>", "").replace("</rendered-html>", "")
-        text = re.sub(r"<[^>]+>", "", text)
-    return text.strip()
 
 
 class Package(BaseModel):
@@ -88,7 +78,7 @@ class Option(BaseModel):
     @field_validator("description", mode="after")
     @classmethod
     def clean_description(cls, v):
-        return _strip_html(v) if v else ""
+        return html_to_text(v) if v else ""
 
     def format_short(self) -> str:
         """Format for search results listing."""
@@ -144,7 +134,7 @@ class HomeManagerOption(BaseModel):
     @field_validator("description", mode="after")
     @classmethod
     def clean_description(cls, v):
-        return _strip_html(v) if v else ""
+        return html_to_text(v) if v else ""
 
     def format_short(self) -> str:
         """Format for search results listing."""

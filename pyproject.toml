@@ -33,7 +33,15 @@ dependencies = [
     "platformdirs>=4.0.0",
     "pyyaml>=6.0.0",
     "lunr>=0.7.0",
+    "pyixx",
+    "beautifulsoup4>=4.12.0",
 ]
+
+[tool.uv.sources]
+pyixx = { workspace = true }
+
+[tool.uv.workspace]
+members = ["pyixx"]
 
 [project.urls]
 Homepage = "https://github.com/felixdorn/mcp-nix"
@@ -54,4 +62,32 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=9.0.2",
     "pytest-anyio>=0.0.0",
+    "ruff>=0.8.0",
+    "ty>=0.0.8",
 ]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mcp_nix"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
