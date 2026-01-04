@@ -12,7 +12,7 @@
 - NixHub
 
 > [!NOTE]
-> By default, only **Nixpkgs** and **NixOS** categories are included. Use additional [flags](#tools) to include other categories.
+> Without additonal configuration, only **Nixpkgs** and **NixOS** categories are included.
 
 
 
