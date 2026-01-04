@@ -20,18 +20,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Ruff check
-        run: uv run ruff check .
+      - name: mcp_nix Checks
+        run: make check
 
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
-      - name: Type check
-        run: uv run ty check mcp_nix
-
-      - name: Clippy
-        working-directory: pyixx
-        run: cargo clippy --all-targets -- -D warnings
+      - name: pyixx Checks
+        run: make pyixx-check
 
       - name: Rustfmt
         working-directory: pyixx

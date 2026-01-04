@@ -38,7 +38,7 @@ Find the tools names in the [reference](#reference).
 
 ### Reference
 
-| Tool | Enabled | Description |
+| Tool | Enabled by default | Description |
 |------|:-------:|-------------|
 | **packages** | | |
 | `search_nixpkgs` | ✓ | Search for Nixpkgs packages by name or description |

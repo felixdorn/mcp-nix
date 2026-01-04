@@ -60,11 +60,11 @@ impl Index {
     ///
     /// Args:
     ///     query: Search query (supports * wildcard)
-    ///     max_results: Maximum number of results to return
-    ///     scope_id: Optional scope ID to filter by
+    ///     `max_results`: Maximum number of results to return
+    ///     `scope_id`: Optional scope ID to filter by
     ///
     /// Returns:
-    ///     List of SearchResult objects
+    ///     List of `SearchResult` objects
     #[pyo3(signature = (query, max_results=20, scope_id=None))]
     fn search(&self, query: &str, max_results: usize, scope_id: Option<u8>) -> PyResult<Vec<SearchResult>> {
         let results = self
@@ -81,7 +81,7 @@ impl Index {
     /// Get the index of an option by its exact name
     ///
     /// Args:
-    ///     scope_id: Scope ID to search in
+    ///     `scope_id`: Scope ID to search in
     ///     name: Exact option name (e.g., "programs.vim.enable")
     ///
     /// Returns:
@@ -92,7 +92,7 @@ impl Index {
             .map_err(|e| PyValueError::new_err(format!("Lookup failed: {e}")))
     }
 
-    /// Get index metadata (chunk_size, scopes)
+    /// Get index metadata (`chunk_size`, scopes)
     fn meta(&self) -> IndexMeta {
         let meta = self.inner.meta();
         IndexMeta {

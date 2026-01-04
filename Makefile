@@ -1,9 +1,12 @@
-.PHONY: lint check test fmt
+.PHONY: lint check test fmt pyixx-check
 
 lint:
 	uv run ruff check --fix .
 	uv run ruff format .
 	uv run ty check mcp_nix
+
+pyixx-check:
+	cd pyixx && cargo clippy --all-targets -- -D warnings
 
 check:
 	uv run ruff check .
