@@ -48,84 +48,20 @@ mcp-nix is an MCP (Model Context Protocol) server that provides AI assistants wi
 ### Prerequisites
 
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (Python package manager)
-- Rust toolchain (for building pyixx)
+- [uv](https://github.com/astral-sh/uv)
+- Rust toolchain
 
 ### Using Nix
 
 ```bash
-# Enter the development shell
 nix develop
-
-# All dependencies are now available
 ```
-
-## Project Structure
-
-```
-mcp-nix/
-├── mcp_nix/                 # Main Python package
-│   ├── __init__.py          # Entry point, CLI args, tool registration
-│   ├── tools.py             # All MCP tool implementations
-│   ├── models.py            # Pydantic data models
-│   ├── search.py            # NixOS/Nixpkgs Elasticsearch client
-│   ├── homemanager.py       # Home Manager search (lunr-based)
-│   ├── nuschtos.py          # NixVim/nix-darwin search (binary index)
-│   ├── nixhub.py            # Package version lookup
-│   ├── sources.py           # Source code fetching
-│   └── utils.py             # Shared utilities
-│
-├── pyixx/                   # Rust PyO3 bindings for libixx
-│   ├── src/lib.rs           # Rust implementation
-│   ├── Cargo.toml           # Rust dependencies
-│   └── pyproject.toml       # Python package config
-│
-├── tests/                   # Test suite
-│   ├── test_e2e.py          # End-to-end MCP tests
-│   └── test_resolution.py   # Tool resolution logic tests
-│
-├── pyproject.toml           # Project configuration
-├── flake.nix                # Nix development environment
-└── Makefile                 # Development commands
-```
-
-### Module Responsibilities
-
-| Module | Purpose | External Dependency |
-|--------|---------|---------------------|
-| `search.py` | NixOS/Nixpkgs package and option search | search.nixos.org Elasticsearch |
-| `homemanager.py` | Home Manager option search | home-manager-options.extranix.com |
-| `nuschtos.py` | NixVim and nix-darwin option search | NüschtOS .ixx binary indices |
-| `nixhub.py` | Package version history | nixhub.io API |
-| `sources.py` | Fetch Nix source files | GitHub/GitLab raw content |
-| `models.py` | Data validation and formatting | None |
 
 ## How Tools Work
 
 ### Tool Categories
 
-Tools are organized into categories with default inclusion states:
-
-| Category | Default | Tools |
-|----------|---------|-------|
-| `nixpkgs` | Enabled | `search_nixpkgs`, `show_nixpkgs_package`, `read_derivation`* |
-| `nixos` | Enabled | `search_nixos_options`, `show_nixos_option`, `list_nixos_channels`, `read_nixos_module`* |
-| `homemanager` | Disabled | `search_homemanager_options`, `show_homemanager_option`, `list_homemanager_releases`, `read_home_module`* |
-| `nixvim` | Disabled | `search_nixvim_options`, `show_nixvim_option`, `read_nixvim_declaration`* |
-| `nix-darwin` | Disabled | `search_nix_darwin_options`, `show_nix_darwin_option`, `read_nix_darwin_declaration`* |
-| `nixhub` | Disabled | `list_package_versions`, `find_nixpkgs_commit_with_package_version` |
-
-*Tools marked with * are in `DEFAULT_EXCLUDED_TOOLS` and require explicit `--include` even when their category is enabled.
-
-### Tool Resolution Logic
-
-The resolution system in `__init__.py` works as follows:
-
-1. Start with category defaults (`TOOL_CATEGORIES`)
-2. Apply CLI category flags (`--homemanager`, `--no-nixos`, etc.)
-3. Apply `--include` list (adds specific tools)
-4. Apply `--exclude` list (removes specific tools)
-5. Filter out `DEFAULT_EXCLUDED_TOOLS` unless explicitly included
+Tools are organized into categories with inclusion states at the category and tool level. Tool resolution logic is in `__init__.py`
 
 ### Tool Implementation Pattern
 
@@ -387,23 +323,9 @@ The CLI flag is automatically generated from the category name. Users can enable
 # Run all tests
 make test
 
-# Run specific test file
+# Or run specific test file
 uv run pytest tests/test_e2e.py -v
-
-# Run specific test
-uv run pytest tests/test_e2e.py::test_search_package -v
 ```
-
-### Test Structure
-
-**End-to-end tests** (`test_e2e.py`):
-- Test the full MCP client-server flow
-- Verify tools return expected results
-- Use real API calls (not mocked)
-
-**Unit tests** (`test_resolution.py`):
-- Test the tool resolution logic
-- Verify category and tool inclusion/exclusion rules
 
 ### Writing Tests
 
@@ -439,7 +361,7 @@ async def test_my_new_tool():
 
 ### Linting and Formatting
 
-We use [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
+We use [Ruff](https://github.com/astral-sh/ruff) for linting and formatting  and [ty](https://github.com/astral-sh/ty) for type checking:
 
 ```bash
 # Check for issues
@@ -452,86 +374,15 @@ make lint
 make fmt
 ```
 
-### Type Checking
-
-We use [ty](https://github.com/astral-sh/ty) for type checking:
-
-```bash
-# Run type checker (included in make check)
-uv run ty check mcp_nix
-```
-
 ### Rust Code (pyixx)
 
 ```bash
-# Check Rust code
+# Run clippy and fmt
 make pyixx-check
 
-# This runs:
-# - cargo clippy (linting)
-# - cargo fmt --check (formatting)
 ```
 
-### Style Guidelines
-
-1. **Docstrings**: All public functions need docstrings with Args and Examples sections
-2. **Type hints**: Use type hints for all function parameters and return types
-3. **Error handling**: Use custom exception classes, never bare `except:`
-4. **Async**: All tool functions must be async
-5. **Caching**: Implement caching for any network requests
-6. **Models**: Use Pydantic models for external data validation
-
-### Example Docstring
-
-```python
-async def search_packages(
-    self,
-    query: str,
-    channel: str = "unstable",
-    limit: int = 10,
-) -> list[Package]:
-    """
-    Search for packages matching the query.
-
-    Args:
-        query: Search terms (name, description, or attribute)
-        channel: NixOS channel to search (default: unstable)
-        limit: Maximum results to return (default: 10)
-
-    Returns:
-        List of matching Package objects
-
-    Raises:
-        InvalidChannelError: If the channel doesn't exist
-        APIError: If the search backend is unavailable
-
-    Examples:
-        >>> await search.search_packages("firefox")
-        [Package(name="firefox", ...), ...]
-    """
-```
-
-## Pull Request Process
-
-### Before Submitting
-
-1. **Run the full check suite**:
-   ```bash
-   make check
-   make test
-   ```
-
-2. **Ensure all tests pass** (CI runs these automatically)
-
-3. **Update documentation** if adding new features:
-   - Add tool to `README.md` tool table
-   - Update this file if changing development processes
-
-4. **Write meaningful commit messages**:
-   - Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, etc.
-   - Keep the first line under 72 characters
-
-### PR Guidelines
+## PR Guidelines
 
 1. **One feature per PR**: Keep PRs focused and reviewable
 2. **Include tests**: New features need corresponding tests
