@@ -1,6 +1,93 @@
 # A tasteful MCP server for the Nix ecosystem
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
+
+## Features
+
+- **Tools**
+  - **Nixpkgs** — Search packages across the Nix package collection
+  - **NixOS** — Explore NixOS configuration options and modules
+  - **Home Manager** — Configure user environments declaratively
+  - **Nixvim** — Neovim configuration through Nix
+  - **nix-darwin** — macOS system configuration with Nix
+  - **NixHub** — Find specific package versions and their nixpkgs commits
+
+> [!NOTE]
+> By default, only **Nixpkgs** and **NixOS** categories are enabled. Use the [flags](#tools) below to enable additional features.
+
+
+## Getting started
+
+Use the following configuration to add the MCP server to your client:
+
+```json
+{
+  "mcpServers": {
+    "nix": {
+      "command": "uvx",
+      "args": ["mcp-nix"]
+    }
+  }
+}
+```
+
+> [!NOTE]
+> By default, only **Nixpkgs** and **NixOS** categories are enabled. Use the [flags](#tools) below to enable additional features.
+
+
+<details>
+<summary>Claude Code</summary>
+
+```bash
+claude mcp add nix -- uvx mcp-nix
+```
+
+</details>
+
+<details>
+<summary>Claude Desktop</summary>
+
+Follow the [MCP install guide](https://modelcontextprotocol.io/quickstart/user) and add the configuration above to your `claude_desktop_config.json`.
+
+</details>
+
+<details>
+<summary>Codex</summary>
+
+```bash
+codex mcp add nix -- uvx mcp-nix
+```
+
+</details>
+
+<details>
+<summary>Copilot</summary>
+
+Add the configuration above to your `.vscode/mcp.json` file.
+
+</details>
+
+<details>
+<summary>Cursor</summary>
+
+Add the configuration above to your Cursor settings under `~/.cursor/mcp.json`.
+
+</details>
+
+<details>
+<summary>Gemini CLI</summary>
+
+Add the configuration above to your `~/.gemini/settings.json` under the `mcpServers` key.
+
+</details>
+
+<details>
+<summary>VS Code</summary>
+
+Add the configuration above to your `.vscode/mcp.json` file or to your user settings.
+
+</details>
+
 ## Tools
 
 ### Categories included by default
