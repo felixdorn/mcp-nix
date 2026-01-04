@@ -16,7 +16,7 @@
 
 
 
-## Getting started
+## Installation
 
 Use the following configuration to add the MCP server to your client:
 
