@@ -148,8 +148,6 @@ Add the configuration above to your `.vscode/mcp.json` file or to your user sett
 | `list_package_versions` | List all available versions for a Nixpkgs package |
 | `find_nixpkgs_commit_with_package_version` | Get the nixpkgs commit hash for a specific package version |
 
-[^a]: Excluded by default. Requires explicit `--include`.
-
 ### Contributing
 Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
