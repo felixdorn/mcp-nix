@@ -112,7 +112,7 @@ Use the following configuration to add the MCP server to your client:
 Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### Credits
-Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com), [NüschtOS](https://github.com/NuschtOS/search), [NixHub](https://nixhub.io) for maintaining the backends and pipeline the tool uses and for the Nix community for making any of this possible.
+Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com), [NüschtOS](https://github.com/NuschtOS/search), [NixHub](https://nixhub.io) for maintaining the backends and pipeline this server uses and for the Nix community for making any of this possible.
 
 ### License
 GPLv3: [License](LICENSE)
