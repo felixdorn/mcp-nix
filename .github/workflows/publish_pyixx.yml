@@ -1,15 +1,12 @@
-name: pyixx
+name: Publish pyixx
 
 on:
-  pull_request:
-    branches: [master]
-    paths:
-      - 'pyixx/**'
-      - '.github/workflows/pyixx.yml'
-  release:
-    types: [published]
   workflow_dispatch:
-  workflow_call:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,6 +27,9 @@ jobs:
       - uses: actions/setup-python@v6.1.0
         with:
           python-version: 3.13
+
+      - name: Set version
+        run: sed -i 's/^version = .*/version = "${{ inputs.version }}"/' pyixx/Cargo.toml
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -62,6 +62,9 @@ jobs:
         with:
           python-version: 3.13
 
+      - name: Set version
+        run: sed -i 's/^version = .*/version = "${{ inputs.version }}"/' pyixx/Cargo.toml
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -93,6 +96,9 @@ jobs:
         with:
           python-version: 3.13
 
+      - name: Set version
+        run: sed -i '' 's/^version = .*/version = "${{ inputs.version }}"/' pyixx/Cargo.toml
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -122,6 +128,9 @@ jobs:
           python-version: 3.13
           architecture: ${{ matrix.platform.target }}
 
+      - name: Set version
+        run: (Get-Content pyixx/Cargo.toml) -replace '^version = .*', 'version = "${{ inputs.version }}"' | Set-Content pyixx/Cargo.toml
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -143,6 +152,9 @@ jobs:
         with:
           submodules: true
 
+      - name: Set version
+        run: sed -i 's/^version = .*/version = "${{ inputs.version }}"/' pyixx/Cargo.toml
+
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -159,7 +171,6 @@ jobs:
   publish:
     name: Publish to PyPI
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
     needs: [linux, musllinux, macos, windows, sdist]
     permissions:
       id-token: write
