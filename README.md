@@ -11,7 +11,7 @@
 - nix-darwin
 - NixHub
 
-> Without additonal configuration, only **Nixpkgs** and **NixOS** categories are included.
+> Without additional configuration, only **Nixpkgs** and **NixOS** categories are included.
 
 
 
@@ -39,7 +39,7 @@ Use the following configuration to add the MCP server to your client:
 | **Nixpkgs** | `nixpkgs` | `search_nixpkgs`, `show_nixpkgs_package`, `read_derivation`[^a] |
 | **NixOS** | `nixos` | `search_nixos_options`, `show_nixos_option`, `list_nixos_channels`, `read_nixos_module`[^a] |
 
-* **Category excluded by default**
+* **Categories excluded by default**
 
 | Category | ID | Tools |
 |----------|-----|-------|
