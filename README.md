@@ -2,14 +2,14 @@
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
 
-## Supported tools
+## Supported software
 
-- **Nixpkgs** — Search packages across the Nix package collection
-- **NixOS** — Explore NixOS configuration options and modules
-- **Home Manager** — Configure user environments declaratively
-- **Nixvim** — Neovim configuration through Nix
-- **nix-darwin** — macOS system configuration with Nix
-- **NixHub** — Find specific package versions and their nixpkgs commits
+- **Nixpkgs**
+- **NixOS**
+- **Home Manager**
+- **Nixvim**
+- **nix-darwin**
+- **NixHub**
 
 > [!NOTE]
 > By default, only **Nixpkgs** and **NixOS** categories are enabled. Use the [flags](#tools) below to enable additional features.
@@ -29,10 +29,6 @@ Use the following configuration to add the MCP server to your client:
   }
 }
 ```
-
-> [!NOTE]
-> By default, only **Nixpkgs** and **NixOS** categories are enabled. Use the [flags](#tools) below to enable additional features.
-
 
 <details>
 <summary>Claude Code</summary>
