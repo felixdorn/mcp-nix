@@ -34,7 +34,7 @@ mcp-nix is an MCP (Model Context Protocol) server that provides AI assistants wi
           ▼                   ▼                   ▼
 ┌──────────────────┐ ┌─────────────────┐ ┌─────────────────┐
 │     search.py    │ │  homemanager.py │ │       ...       │
-│  (Elastisearch)  │ │  (lunr + JSON)  │ │(nixhum, ixx,...)│
+│  (Elastisearch)  │ │  (lunr + JSON)  │ │(nixhub, ixx,...)│
 └──────────────────┘ └─────────────────┘ └─────────────────┘
           │                   │
           ▼                   ▼
