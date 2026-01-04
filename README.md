@@ -2,7 +2,7 @@
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
 
-## Supported software
+## Ecosystem coverage
 
 - **Nixpkgs**
 - **NixOS**
