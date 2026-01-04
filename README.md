@@ -86,14 +86,14 @@ Add the configuration above to your `.vscode/mcp.json` file or to your user sett
 
 ## Tools
 
-### Categories included by default
+* **Categories included by default:**
 
 | Category | ID | Tools |
 |----------|-----|-------|
 | **Nixpkgs** | `nixpkgs` | `search_nixpkgs`, `show_nixpkgs_package`, `read_derivation`[^a] |
 | **NixOS** | `nixos` | `search_nixos_options`, `show_nixos_option`, `list_nixos_channels`, `read_nixos_module`[^a] |
 
-### Categories excluded by default
+* **Category excluded by default**
 
 | Category | ID | Tools |
 |----------|-----|-------|
