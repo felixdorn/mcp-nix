@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.felixdorn/mcp-nix",
+  "title": "Nix MCP",
+  "description": "Access the Nix ecosystem (Nixpkgs, NixOS, Home Manager, nix-darwin, nixvim...)",
+  "version": "0.1.2",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "mcp-nix",
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

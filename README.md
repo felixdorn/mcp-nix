@@ -116,3 +116,5 @@ Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://
 
 ### License
 GPLv3: [License](LICENSE)
+
+<!-- mcp-name: io.github.felixdorn/mcp-nix -->
