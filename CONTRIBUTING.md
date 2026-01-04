@@ -26,36 +26,22 @@ mcp-nix is an MCP (Model Context Protocol) server that provides AI assistants wi
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Tool Layer (tools.py)                    │
-│            17 async tools with @mcp.tool() decorators        │
+│                     Tool Layer (tools.py)                   │
+│              Async tools with @mcp.tool() decorators        │
 └─────────────────────────────────────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
           ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   search.py     │ │ homemanager.py  │ │   nuschtos.py   │
-│  (Elasticsearch)│ │ (lunr + JSON)   │ │ (pyixx binary)  │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-          │                   │                   │
-          ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ search.nixos.org│ │extranix.com API │ │ NüschtOS .ixx   │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-
-Additional modules:
-├── nixhub.py    → nixhub.io API (package versions)
-├── sources.py   → GitHub/GitLab raw file fetching
-├── models.py    → Pydantic data models
-└── utils.py     → HTML parsing utilities
+┌──────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│     search.py    │ │  homemanager.py │ │       ...       │
+│  (Elastisearch)  │ │  (lunr + JSON)  │ │(nixhum, ixx,...)│
+└──────────────────┘ └─────────────────┘ └─────────────────┘
+          │                   │
+          ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐
+│ search.nixos.org│ │extranix.com API │
+└─────────────────┘ └─────────────────┘
 ```
-
-### Key Design Principles
-
-1. **Modularity**: Each data source has its own module handling fetching, caching, and searching
-2. **Caching**: Multi-level caching (in-memory + disk) with appropriate TTLs
-3. **Async**: All tools are async for non-blocking operation
-4. **Type Safety**: Pydantic models validate all external data
-5. **Configurability**: Fine-grained control over which tools are enabled
 
 ## Development Setup
 
@@ -80,7 +66,7 @@ nix develop
 mcp-nix/
 ├── mcp_nix/                 # Main Python package
 │   ├── __init__.py          # Entry point, CLI args, tool registration
-│   ├── tools.py             # All 17 MCP tool implementations
+│   ├── tools.py             # All MCP tool implementations
 │   ├── models.py            # Pydantic data models
 │   ├── search.py            # NixOS/Nixpkgs Elasticsearch client
 │   ├── homemanager.py       # Home Manager search (lunr-based)
