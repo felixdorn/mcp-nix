@@ -4,15 +4,17 @@
 
 ## Supported software
 
-> [!NOTE]
-> By default, only **Nixpkgs** and **NixOS** categories are included. Use [flags](#tools) below to enable additional features.
-
 - **Nixpkgs**
 - **NixOS**
 - Home Manager
 - Nixvim
 - nix-darwin
 - NixHub
+
+> [!NOTE]
+> By default, only **Nixpkgs** and **NixOS** categories are included. Use additional [flags](#tools) to include other categories.
+
+
 
 ## Getting started
 
