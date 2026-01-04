@@ -4,6 +4,7 @@
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
 from .nixhub import NixhubSearch, PackageNotFoundError, VersionNotFoundError
+from .noogle import FunctionNotFoundError, NoogleSearch
 from .nuschtos import InvalidProjectError, NuschtosSearch
 from .search import APIError, InvalidChannelError, NixOSSearch
 from .sources import fetch_source, get_line_count
@@ -45,6 +46,8 @@ def _format_error(e: Exception) -> str:
         if len(e.available) > 5:
             versions_preview += f", ... ({len(e.available)} total)"
         return f"Error: Version '{e.version}' not found for '{e.name}'. Available: {versions_preview}"
+    if isinstance(e, FunctionNotFoundError):
+        return f"Error: Function '{e.path}' not found on Noogle"
     return f"Error: {e}"
 
 
@@ -591,3 +594,46 @@ async def read_nix_darwin_declaration(name: str) -> str:
         return _format_error(e)
 
     return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
+async def search_nix_stdlib(query: str) -> str:
+    """Search Nix standard library functions by name or type signature.
+
+    Searches noogle.dev for Nix builtins and lib functions. Use this to find
+    functions for string manipulation, list operations, attribute sets, etc.
+
+    Args:
+        query: Function name or keyword (e.g., "map", "filter", "strings", "attrset")
+    """
+    try:
+        result = NoogleSearch.search_functions(query, _SEARCH_LIMIT)
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No Nix stdlib functions found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} functions:\n"
+    else:
+        header = f"Found {len(result.items)} functions:\n"
+    return header + "\n\n".join(fn.format_short() for fn in result.items)
+
+
+@mcp.tool()
+async def help_for_stdlib_function(path: str) -> str:
+    """Get detailed help for a Nix standard library function.
+
+    Returns type signature, description, arguments, and examples.
+    Use search_nix_stdlib first if you don't know the exact function path.
+
+    Args:
+        path: Function path (e.g., "lib.strings.splitString", "builtins.map", "lib.attrsets.mapAttrs")
+    """
+    try:
+        func = NoogleSearch.get_function(path)
+    except APIError as e:
+        return _format_error(e)
+
+    return str(func)

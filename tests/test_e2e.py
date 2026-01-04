@@ -265,3 +265,30 @@ async def test_show_homemanager_option_has_reference():
         assert "Reference:" in text
         assert "lines" in text
         assert "read_home_module" in text
+
+
+async def test_search_nix_stdlib():
+    """Search for Nix standard library functions."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("search_nix_stdlib", {"query": "map"})
+        assert result.content
+        text = result.content[0].text
+        assert "map" in text.lower()
+
+
+async def test_help_for_stdlib_function():
+    """Get details for a Nix stdlib function."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("help_for_stdlib_function", {"path": "lib.strings.splitString"})
+        assert result.content
+        text = result.content[0].text
+        assert "splitstring" in text.lower()
+
+
+async def test_help_for_stdlib_function_not_found():
+    """Non-existent function should return error."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("help_for_stdlib_function", {"path": "lib.nonexistent.xyz123"})
+        assert result.content
+        text = result.content[0].text
+        assert "error" in text.lower() or "not found" in text.lower()

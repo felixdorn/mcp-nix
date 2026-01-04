@@ -35,6 +35,7 @@ dependencies = [
     "lunr>=0.7.0",
     "pyixx",
     "beautifulsoup4>=4.12.0",
+    "wasmtime>=23.0.0",
 ]
 
 [tool.uv.sources]

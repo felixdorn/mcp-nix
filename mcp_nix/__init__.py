@@ -21,6 +21,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     "nixvim": ["search_nixvim_options", "show_nixvim_option", "read_nixvim_declaration"],
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option", "read_nix_darwin_declaration"],
     "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
+    "noogle": ["search_nix_stdlib", "help_for_stdlib_function"],
 }
 
 # Tools excluded by default even when their category is enabled (use --include to enable)
@@ -39,6 +40,7 @@ CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "nixvim": False,
     "nix-darwin": False,
     "nixhub": False,
+    "noogle": False,
 }
 
 # All available tool names (flattened from categories)
@@ -160,6 +162,12 @@ def parse_args() -> argparse.Namespace:
         help="Include NixHub version tools (default: excluded)",
     )
     parser.add_argument(
+        "--noogle",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Include Noogle stdlib function tools (default: excluded)",
+    )
+    parser.add_argument(
         "--include",
         type=str,
         default="",
@@ -208,6 +216,7 @@ def main() -> None:
         "nixvim": args.nixvim,
         "nix-darwin": args.nix_darwin,
         "nixhub": args.nixhub,
+        "noogle": args.noogle,
     }
 
     included_tools = resolve_included_tools(category_overrides, include, exclude)

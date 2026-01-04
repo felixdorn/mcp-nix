@@ -10,6 +10,7 @@
 - Nixvim
 - nix-darwin
 - NixHub
+- Noogle (Nix standard library)
 
 > Without additional configuration, only **Nixpkgs** and **NixOS** categories are included.
 
@@ -60,6 +61,7 @@ Use the following configuration to add the MCP server to your client:
 | **Nixvim** | `nixvim` | `search_nixvim_options`, `show_nixvim_option`, `read_nixvim_declaration`[^a] |
 | **nix-darwin** | `nix-darwin` | `search_nix_darwin_options`, `show_nix_darwin_option`, `read_nix_darwin_declaration`[^a] |
 | **NixHub** | `nixhub` | `list_package_versions`, `find_nixpkgs_commit_with_package_version` |
+| **Noogle** | `noogle` | `search_nix_stdlib`, `help_for_stdlib_function` |
 
 [^a]: Requires explicit `--include` even when the category is enabled.
 
@@ -106,13 +108,16 @@ Use the following configuration to add the MCP server to your client:
 | **nixhub** | |
 | `list_package_versions` | List all available versions for a Nixpkgs package |
 | `find_nixpkgs_commit_with_package_version` | Get the nixpkgs commit hash for a specific package version |
+| **noogle** | |
+| `search_nix_stdlib` | Search Nix standard library functions by name or type signature |
+| `help_for_stdlib_function` | Get detailed help for a Nix standard library function |
 [^a]: Requires explicit `--include` even when the category is enabled.
 
 ### Contributing
 Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### Credits
-Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com), [NüschtOS](https://github.com/NuschtOS/search), [NixHub](https://nixhub.io) for maintaining the backends and pipeline this server uses and for the Nix community for making any of this possible.
+Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://extranix.com), [NüschtOS](https://github.com/NuschtOS/search), [NixHub](https://nixhub.io), [Noogle](https://noogle.dev) for maintaining the backends and pipeline this server uses and for the Nix community for making any of this possible.
 
 ### License
 GPLv3: [License](LICENSE)

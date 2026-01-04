@@ -241,3 +241,77 @@ class NixhubCommit(BaseModel):
             ("Attribute", self.attribute_path),
             ("Commit", self.commit_hash),
         )
+
+
+class FunctionInput(BaseModel):
+    """Noogle function input/argument."""
+
+    name: str
+    position: int
+    description: str | None = None
+
+
+class NoogleExample(BaseModel):
+    """Noogle function example."""
+
+    title: str | None = None
+    code: str
+    result: str | None = None
+
+
+class NoogleFunction(BaseModel):
+    """Nix standard library function from Noogle."""
+
+    name: str
+    path: str
+    description: str | None = None
+    type_signature: str | None = None
+    inputs: list[FunctionInput] = Field(default_factory=list)
+    examples: list[NoogleExample] = Field(default_factory=list)
+    source_url: str | None = None
+    source_file: str | None = None
+    source_line: int | None = None
+    aliases: list[str] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
+
+    def format_short(self) -> str:
+        """Format for search results listing."""
+        lines = [f"• {self.path}"]
+        if self.type_signature:
+            lines.append(f"  {self.type_signature}")
+        if self.description:
+            desc = self.description
+            if len(desc) > 120:
+                desc = desc[:117] + "..."
+            lines.append(f"  {desc}")
+        return "\n".join(lines)
+
+    def __str__(self) -> str:
+        """Format for detailed info."""
+        result = _lines(
+            ("Function", self.path),
+            ("Type", self.type_signature or ""),
+            ("Description", self.description or ""),
+            ("Categories", self.categories),
+            ("Source", self.source_url or ""),
+            ("Aliases", self.aliases),
+        )
+
+        if self.inputs:
+            args_lines = ["Arguments:"]
+            for inp in sorted(self.inputs, key=lambda x: x.position):
+                desc = f" - {inp.description}" if inp.description else ""
+                args_lines.append(f"  {inp.position}. {inp.name}{desc}")
+            result += "\n" + "\n".join(args_lines)
+
+        if self.examples:
+            ex_lines = ["Examples:"]
+            for ex in self.examples:
+                if ex.title:
+                    ex_lines.append(f"  # {ex.title}")
+                ex_lines.append(f"  {ex.code}")
+                if ex.result:
+                    ex_lines.append(f"  => {ex.result}")
+            result += "\n" + "\n".join(ex_lines)
+
+        return result
