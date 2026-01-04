@@ -125,30 +125,30 @@ Add the configuration above to your `.vscode/mcp.json` file or to your user sett
 | **nixpkgs** | |
 | `search_nixpkgs` | Search for Nixpkgs packages by name or description |
 | `show_nixpkgs_package` | Get details for a Nixpkgs package by exact name |
-| `read_derivation`[^b] | Read the Nix source code for a package derivation |
+| `read_derivation`[^a] | Read the Nix source code for a package derivation |
 | **nixos** | |
 | `search_nixos_options` | Search NixOS configuration options |
 | `show_nixos_option` | Get details for a NixOS option, or list children if given a prefix |
 | `list_nixos_channels` | List available NixOS release channels |
-| `read_nixos_module`[^b] | Read the Nix source code for a NixOS option declaration |
+| `read_nixos_module`[^a] | Read the Nix source code for a NixOS option declaration |
 | **homemanager** | |
 | `search_homemanager_options` | Search Home Manager options for user environment configuration |
 | `show_homemanager_option` | Get details for a Home Manager option, or list children if given a prefix |
 | `list_homemanager_releases` | List available Home Manager releases |
-| `read_home_module`[^b] | Read the Nix source code for a Home Manager option declaration |
+| `read_home_module`[^a] | Read the Nix source code for a Home Manager option declaration |
 | **nixvim** | |
 | `search_nixvim_options` | Search NixVim configuration options |
 | `show_nixvim_option` | Get details for a NixVim option, or list children if given a prefix |
-| `read_nixvim_declaration`[^b] | Get the declaration reference for a NixVim option |
+| `read_nixvim_declaration`[^a] | Get the declaration reference for a NixVim option |
 | **nix-darwin** | |
 | `search_nix_darwin_options` | Search nix-darwin configuration options for macOS |
 | `show_nix_darwin_option` | Get details for a nix-darwin option, or list children if given a prefix |
-| `read_nix_darwin_declaration`[^b] | Get the declaration reference for a nix-darwin option |
+| `read_nix_darwin_declaration`[^a] | Get the declaration reference for a nix-darwin option |
 | **nixhub** | |
 | `list_package_versions` | List all available versions for a Nixpkgs package |
 | `find_nixpkgs_commit_with_package_version` | Get the nixpkgs commit hash for a specific package version |
 
-[^b]: Excluded by default. Requires explicit `--include`.
+[^a]: Excluded by default. Requires explicit `--include`.
 
 ### Contributing
 Read [CONTRIBUTING.md](CONTRIBUTING.md)
