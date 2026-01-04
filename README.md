@@ -31,59 +31,6 @@ Use the following configuration to add the MCP server to your client:
 }
 ```
 
-<details>
-<summary>Claude Code</summary>
-
-```bash
-claude mcp add nix -- uvx mcp-nix
-```
-
-</details>
-
-<details>
-<summary>Claude Desktop</summary>
-
-Follow the [MCP install guide](https://modelcontextprotocol.io/quickstart/user) and add the configuration above to your `claude_desktop_config.json`.
-
-</details>
-
-<details>
-<summary>Codex</summary>
-
-```bash
-codex mcp add nix -- uvx mcp-nix
-```
-
-</details>
-
-<details>
-<summary>Copilot</summary>
-
-Add the configuration above to your `.vscode/mcp.json` file.
-
-</details>
-
-<details>
-<summary>Cursor</summary>
-
-Add the configuration above to your Cursor settings under `~/.cursor/mcp.json`.
-
-</details>
-
-<details>
-<summary>Gemini CLI</summary>
-
-Add the configuration above to your `~/.gemini/settings.json` under the `mcpServers` key.
-
-</details>
-
-<details>
-<summary>VS Code</summary>
-
-Add the configuration above to your `.vscode/mcp.json` file or to your user settings.
-
-</details>
-
 ## Tools
 
 * **Categories included by default:**
