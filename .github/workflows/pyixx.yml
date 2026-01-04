@@ -37,7 +37,7 @@ jobs:
           python-version: 3.x
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
@@ -68,7 +68,7 @@ jobs:
           python-version: 3.x
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
@@ -99,7 +99,7 @@ jobs:
           python-version: 3.x
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
@@ -128,7 +128,7 @@ jobs:
           architecture: ${{ matrix.platform.target }}
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
@@ -149,7 +149,7 @@ jobs:
           submodules: true
 
       - name: Build sdist
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v
         with:
           command: sdist
           args: --out dist
@@ -176,7 +176,7 @@ jobs:
           merge-multiple: true
 
       - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1.49
+        uses: PyO3/maturin-action@v1
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*
