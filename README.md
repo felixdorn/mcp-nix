@@ -7,45 +7,68 @@
 
 ## Tools
 
-### Enabled by default
+### Included by default
 
-* **Nixpkgs** (disable with `--no-packages`)
+* **Nixpkgs** `nixpkgs`
   * Search Nixpkgs
   * Show Nixpkgs package
-* **NixOS** (disable with `--no-options`)
+* **NixOS** `nixos`
   * Search NixOS options
   * List NixOS channels
 
-### Disabled by default
+### Excluded by default
 
-* **Home Manager** (enable with `--homemanager`)
+* **Home Manager** `homemanager`
   * Search Home Manager options
   * List Home Manager releases
-* **Nixvim** (enable with `--nixvim`)
+* **Nixvim** `nixvim`
   * Search and show Nixvim options
-* **nix-darwin** (enable with `--nix-darwin`)
+* **nix-darwin** `nix-darwin`
   * Search and show nix-darwin options
-* **NixHub** (enable with `--nixhub`)
+* **NixHub** `nixhub`
   * List package versions
   * Find the nixpkgs commit where a version of a package exists
 
+### Including tools
+
+* **Categories**
+  * You can include groups of tools such as `uvx mcp-nix --homemanager --nixvim`
+* **Individual tools**
+  * `uvx mcp-nix --include=list_package_versions`
+
+You can find the group names and the tool names in the [reference](#reference).
+
 ### Excluding tools
 
-Exclude specific tools using the `--exclude` flag, for example:
-```bash
-uvx run mcp-nix --homemanager --exclude=list_homemanager_releases
-```
+Excluding tools you don't use reduces context usage and reduces the chance that the model picks the wrong tool.
 
-Find the tools names in the [reference](#reference).
+* **Categories**
+  * You can include groups of tools such as `uvx mcp-nix --no-nixos --nix-darwin`
+* **Individual tools**
+  * `uvx mcp-nix --exclude=find_nixpkgs_commit_with_package_version`
+
+You can find the group names and the tool names in the [reference](#reference).
 
 ### Reference
 
-| Tool | On by default | Description |
+#### Categories
+
+| Category | Included by default | Flag |
+|----------|:--------:|------|
+| `nixpkgs` | Yes | `--nixpkgs` / `--no-nixpkgs` |
+| `nixos` | Yes | `--nixos` / `--no-nixos` |
+| `homemanager` | | `--homemanager` / `--no-homemanager` |
+| `nixvim` | | `--nixvim` / `--no-nixvim` |
+| `nix-darwin` | | `--nix-darwin` / `--no-nix-darwin` |
+| `nixhub` | | `--nixhub` / `--no-nixhub` |
+
+#### Individual tools
+| Tool | Included by default | Description |
 |------|:-------:|-------------|
-| **packages** | | |
+| **nixpkgs** | | |
 | `search_nixpkgs` | Yes | Search for Nixpkgs packages by name or description |
 | `show_nixpkgs_package` | Yes | Get details for a Nixpkgs package by exact name |
-| **options** | | |
+| **nixos** | | |
 | `search_nixos_options` | Yes | Search NixOS configuration options |
 | `show_nixos_option` | Yes | Get details for a NixOS option, or list children if given a prefix |
 | `list_nixos_channels` | Yes | List available NixOS release channels |
