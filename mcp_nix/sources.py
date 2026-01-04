@@ -116,10 +116,10 @@ def fetch_source(url: str) -> CachedSource:
             raise APIError(f"Unexpected content type '{content_type}' from {raw_url}")
 
         content = resp.text
-    except requests.Timeout:
-        raise APIError(f"Connection timed out fetching {raw_url}")
+    except requests.Timeout as e:
+        raise APIError(f"Connection timed out fetching {raw_url}") from e
     except requests.HTTPError as e:
-        raise APIError(f"Failed to fetch source: {e}")
+        raise APIError(f"Failed to fetch source: {e}") from e
 
     # Cache the result
     _save_source_to_cache(raw_url, content)

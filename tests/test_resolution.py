@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for tool resolution logic."""
 
-from mcp_nix import TOOL_CATEGORIES, resolve_included_tools
+from mcp_nix import DEFAULT_EXCLUDED_TOOLS, TOOL_CATEGORIES, resolve_included_tools
 
 
 class TestResolveIncludedTools:
@@ -21,6 +21,10 @@ class TestResolveIncludedTools:
         assert "search_nixvim_options" not in result
         assert "search_nix_darwin_options" not in result
         assert "list_package_versions" not in result
+
+        # default-excluded tools not included even when their category is enabled
+        assert "read_derivation" not in result
+        assert "read_nixos_module" not in result
 
     def test_include_excluded_category(self):
         """Including an excluded-by-default category includes its tools."""
@@ -140,13 +144,35 @@ class TestResolveIncludedTools:
         assert "search_nixvim_options" in result
         assert "show_nixvim_option" not in result
 
+    def test_default_excluded_tools_need_explicit_include(self):
+        """Default-excluded tools are not included even when their category is enabled."""
+        # Enable all categories
+        result = resolve_included_tools(dict.fromkeys(TOOL_CATEGORIES, True), set(), set())
+
+        # Default-excluded tools should NOT be included
+        for tool in DEFAULT_EXCLUDED_TOOLS:
+            assert tool not in result, f"{tool} should be excluded by default"
+
+    def test_default_excluded_tools_can_be_included(self):
+        """Default-excluded tools can be included via --include."""
+        result = resolve_included_tools({}, {"read_derivation", "read_nixos_module"}, set())
+
+        assert "read_derivation" in result
+        assert "read_nixos_module" in result
+        # But not other default-excluded tools
+        assert "read_home_module" not in result
+
     def test_all_tools_accounted_for(self):
         """Sanity check: all tools in TOOL_CATEGORIES are considered."""
         all_tools = set()
         for tools in TOOL_CATEGORIES.values():
             all_tools.update(tools)
 
-        # Include everything
-        result = resolve_included_tools(dict.fromkeys(TOOL_CATEGORIES, True), set(), set())
+        # Include everything (categories + explicitly include default-excluded tools)
+        result = resolve_included_tools(
+            dict.fromkeys(TOOL_CATEGORIES, True),
+            DEFAULT_EXCLUDED_TOOLS,  # explicitly include default-excluded tools
+            set(),
+        )
 
         assert result == all_tools

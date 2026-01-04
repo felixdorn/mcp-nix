@@ -9,19 +9,26 @@ mcp = FastMCP("mcp-nix")
 
 # maps category ID to list of tool names
 TOOL_CATEGORIES: dict[str, list[str]] = {
-    "nixpkgs": ["search_nixpkgs", "show_nixpkgs_package"],
-    "nixos": ["search_nixos_options", "show_nixos_option", "list_nixos_channels"],
-    "homemanager": ["search_homemanager_options", "show_homemanager_option", "list_homemanager_releases"],
-    "nixvim": ["search_nixvim_options", "show_nixvim_option"],
-    "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option"],
-    "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
-    "declarations": [
-        "read_derivation",
-        "read_nixos_module",
+    "nixpkgs": ["search_nixpkgs", "show_nixpkgs_package", "read_derivation"],
+    "nixos": ["search_nixos_options", "show_nixos_option", "list_nixos_channels", "read_nixos_module"],
+    "homemanager": [
+        "search_homemanager_options",
+        "show_homemanager_option",
+        "list_homemanager_releases",
         "read_home_module",
-        "read_nixvim_declaration",
-        "read_nix_darwin_declaration",
     ],
+    "nixvim": ["search_nixvim_options", "show_nixvim_option", "read_nixvim_declaration"],
+    "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option", "read_nix_darwin_declaration"],
+    "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
+}
+
+# Tools excluded by default even when their category is enabled (use --include to enable)
+DEFAULT_EXCLUDED_TOOLS: set[str] = {
+    "read_derivation",
+    "read_nixos_module",
+    "read_home_module",
+    "read_nixvim_declaration",
+    "read_nix_darwin_declaration",
 }
 
 CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
@@ -31,7 +38,6 @@ CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "nixvim": False,
     "nix-darwin": False,
     "nixhub": False,
-    "declarations": False,
 }
 
 # All available tool names (flattened from categories)
@@ -58,7 +64,8 @@ def resolve_included_tools(
     1. If tool is in exclude, or tool's category is in exclude: EXCLUDED
     2. If category is explicitly excluded (override=False): EXCLUDED
     3. If tool is in include (and not excluded by above): INCLUDED
-    4. Otherwise: use category's effective state (override or default)
+    4. If tool is in DEFAULT_EXCLUDED_TOOLS: EXCLUDED
+    5. Otherwise: use category's effective state (override or default)
 
     Args:
         category_overrides: Category ID -> True/False/None (None = use default)
@@ -99,7 +106,11 @@ def resolve_included_tools(
                 included_tools.add(tool)
                 continue
 
-            # Rule 4: use category state
+            # Rule 4: default-excluded tools are excluded unless explicitly included
+            if tool in DEFAULT_EXCLUDED_TOOLS:
+                continue
+
+            # Rule 5: use category state
             if category_included:
                 included_tools.add(tool)
 
@@ -146,12 +157,6 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=None,
         help="Include NixHub version tools (default: excluded)",
-    )
-    parser.add_argument(
-        "--declarations",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Include source code reading tools (default: excluded)",
     )
     parser.add_argument(
         "--include",
@@ -202,7 +207,6 @@ def main() -> None:
         "nixvim": args.nixvim,
         "nix-darwin": args.nix_darwin,
         "nixhub": args.nixhub,
-        "declarations": args.declarations,
     }
 
     included_tools = resolve_included_tools(category_overrides, include, exclude)
