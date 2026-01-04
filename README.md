@@ -30,6 +30,19 @@ Use the following configuration to add the MCP server to your client:
 }
 ```
 
+### Using Nix
+
+```json
+{
+  "mcpServers": {
+    "nix": {
+      "command": "nix",
+      "args": ["run", "github:felixdorn/mcp-nix"]
+    }
+  }
+}
+```
+
 ## Tools
 
 * **Categories included by default:**
