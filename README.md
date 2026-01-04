@@ -106,6 +106,7 @@ Use the following configuration to add the MCP server to your client:
 | **nixhub** | |
 | `list_package_versions` | List all available versions for a Nixpkgs package |
 | `find_nixpkgs_commit_with_package_version` | Get the nixpkgs commit hash for a specific package version |
+[^a]: Requires explicit `--include` even when the category is enabled.
 
 ### Contributing
 Read [CONTRIBUTING.md](CONTRIBUTING.md)
