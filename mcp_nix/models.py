@@ -182,3 +182,46 @@ class HomeManagerRelease(BaseModel):
     def __str__(self) -> str:
         default_marker = " (default)" if self.is_default else ""
         return f"• {self.name}{default_marker}\n  Branch: {self.value}"
+
+
+class NixhubPlatform(BaseModel):
+    """Nixhub platform info with commit hash."""
+
+    attribute_path: str
+    commit_hash: str
+
+
+class NixhubRelease(BaseModel):
+    """Nixhub package release/version."""
+
+    version: str
+    last_updated: str
+    platforms_summary: str = ""
+    outputs_summary: str = ""
+    platforms: list[NixhubPlatform] = Field(default_factory=list)
+
+    def format_short(self) -> str:
+        """Format for version listing."""
+        lines = [f"• {self.version}"]
+        if self.platforms_summary:
+            lines.append(f"  Platforms: {self.platforms_summary}")
+        if self.last_updated:
+            lines.append(f"  Updated: {self.last_updated[:10]}")
+        return "\n".join(lines)
+
+
+class NixhubCommit(BaseModel):
+    """Nixhub commit information for pinning."""
+
+    name: str
+    version: str
+    attribute_path: str
+    commit_hash: str
+
+    def __str__(self) -> str:
+        return _lines(
+            ("Package", self.name),
+            ("Version", self.version),
+            ("Attribute", self.attribute_path),
+            ("Commit", self.commit_hash),
+        )

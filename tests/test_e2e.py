@@ -143,3 +143,33 @@ async def test_nixvim_get_option_details():
         text = result.content[0].text
         assert "colorscheme" in text.lower()
         assert "type:" in text.lower()
+
+
+async def test_nixhub_list_package_versions():
+    """List available versions for a package."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("list_package_versions", {"name": "nodejs"})
+        assert result.content
+        text = result.content[0].text
+        assert "versions" in text.lower()
+
+
+async def test_nixhub_get_commit():
+    """Get nixpkgs commit for a specific version."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool(
+            "find_nixpkgs_commit_with_package_version", {"name": "nodejs", "version": "20.11.0"}
+        )
+        assert result.content
+        text = result.content[0].text
+        # It's unlikely nodejs 20.11.0 would change, and if it does, its trivially updatable.
+        assert "10b813040df67c4039086db0f6eaf65c536886c6" in text
+
+
+async def test_nixhub_package_not_found():
+    """Non-existent package should return error."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("list_package_versions", {"name": "nonexistent-package-xyz123"})
+        assert result.content
+        text = result.content[0].text
+        assert "error" in text.lower() or "not found" in text.lower()

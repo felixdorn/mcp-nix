@@ -14,6 +14,7 @@ TOOL_CATEGORIES = {
     "homemanager": ["search_homemanager_options", "show_homemanager_option", "list_homemanager_releases"],
     "nixvim": ["search_nixvim_options", "show_nixvim_option"],
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option"],
+    "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
 }
 
 # All available tool names (flattened from categories)
@@ -50,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         help="Enable NixVim option search tools (default: disabled)",
     )
     parser.add_argument(
+        "--nixhub",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable NixHub version tools (default: disabled)",
+    )
+    parser.add_argument(
         "--exclude",
         type=str,
         default="",
@@ -82,6 +89,7 @@ def main() -> None:
         ("options", args.options),
         ("homemanager", args.homemanager),
         ("nixvim", args.nixvim),
+        ("nixhub", args.nixhub),
     ]:
         if not enabled:
             for tool_name in TOOL_CATEGORIES[category]:

@@ -3,6 +3,7 @@
 
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
+from .nixhub import NixhubSearch, PackageNotFoundError, VersionNotFoundError
 from .nuschtos import InvalidProjectError, NuschtosSearch
 from .search import APIError, InvalidChannelError, NixOSSearch
 
@@ -17,6 +18,13 @@ def _format_error(e: Exception) -> str:
         return f"Error: Invalid release '{e.release}'. Available: {', '.join(e.available)}"
     if isinstance(e, InvalidProjectError):
         return f"Error: Invalid project '{e.project}'. Available: {', '.join(e.available)}"
+    if isinstance(e, PackageNotFoundError):
+        return f"Error: Package '{e.name}' not found on nixhub"
+    if isinstance(e, VersionNotFoundError):
+        versions_preview = ", ".join(e.available[:5])
+        if len(e.available) > 5:
+            versions_preview += f", ... ({len(e.available)} total)"
+        return f"Error: Version '{e.version}' not found for '{e.name}'. Available: {versions_preview}"
     return f"Error: {e}"
 
 
@@ -309,3 +317,46 @@ async def show_nix_darwin_option(name: str) -> str:
         return f"No option or children found for '{name}'"
     except APIError as e:
         return _format_error(e)
+
+
+@mcp.tool()
+async def list_package_versions(name: str) -> str:
+    """List all available versions for a Nixpkgs package.
+
+    Returns version history with platform support and update dates.
+    Use find_nixpkgs_commit_with_package_version with a specific version to get the nixpkgs
+    commit hash for pinning.
+
+    Args:
+        name: Package name (e.g., "nodejs", "python", "git")
+    """
+    try:
+        releases = NixhubSearch.get_versions(name)
+    except APIError as e:
+        return _format_error(e)
+
+    if not releases:
+        return f"No versions found for '{name}'"
+
+    header = f"Found {len(releases)} versions for '{name}':\n"
+    return header + "\n\n".join(r.format_short() for r in releases[:20])
+
+
+@mcp.tool()
+async def find_nixpkgs_commit_with_package_version(name: str, version: str) -> str:
+    """Get the nixpkgs commit hash for a specific package version.
+
+    Returns the commit hash that can be used to pin nixpkgs to get
+    this exact package version. Use list_package_versions first to
+    see available versions.
+
+    Args:
+        name: Package name (e.g., "nodejs", "python")
+        version: Exact version string (e.g., "20.11.0", "3.12.1")
+    """
+    try:
+        commit = NixhubSearch.get_commit(name, version)
+    except APIError as e:
+        return _format_error(e)
+
+    return str(commit)
