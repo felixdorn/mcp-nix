@@ -16,6 +16,9 @@ TOOL_CATEGORIES = {
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option"],
 }
 
+# All available tool names (flattened from categories)
+ALL_TOOLS = [tool for tools in TOOL_CATEGORIES.values() for tool in tools]
+
 
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
@@ -46,12 +49,29 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Enable NixVim option search tools (default: disabled)",
     )
+    parser.add_argument(
+        "--exclude",
+        type=str,
+        default="",
+        help=f"Comma-separated list of tool names to exclude. Available: {', '.join(ALL_TOOLS)}",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     """Run the MCP server."""
     args = parse_args()
+
+    # Parse excluded tools
+    excluded_tools: list[str] = []
+    if args.exclude:
+        for tool_name in args.exclude.split(","):
+            tool_name = tool_name.strip()
+            if tool_name:
+                if tool_name not in ALL_TOOLS:
+                    print(f"Error: Unknown tool '{tool_name}'. Available: {', '.join(ALL_TOOLS)}")
+                    raise SystemExit(1)
+                excluded_tools.append(tool_name)
 
     # Import tools (registers them all with mcp)
     from . import tools as _tools  # noqa: F401
@@ -66,6 +86,10 @@ def main() -> None:
         if not enabled:
             for tool_name in TOOL_CATEGORIES[category]:
                 mcp.remove_tool(tool_name)
+
+    # Remove explicitly excluded tools
+    for tool_name in excluded_tools:
+        mcp.remove_tool(tool_name)
 
     mcp.run()
 

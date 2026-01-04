@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Shared utilities."""
-
 from bs4 import BeautifulSoup
 
 
