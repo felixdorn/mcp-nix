@@ -11,33 +11,31 @@
 
 | Category | ID | Usage |
 |----------|-----|-------------|
-| Nixpkgs | `nixpkgs` | Search and show Nixpkgs packages |
-| NixOS | `nixos` | Search NixOS options and list channels |
+| **Nixpkgs** | `nixpkgs` | Search and show Nixpkgs packages |
+| **NixOS** | `nixos` | Search NixOS options and list channels |
 
 ### Excluded by default
 
 | Category | ID | Usage |
 |----------|-----|-------------|
-| Home Manager | `homemanager` | Search Home Manager options and list releases |
-| Nixvim | `nixvim` | Search and show Nixvim options |
-| nix-darwin | `nix-darwin` | Search and show nix-darwin options |
-| NixHub | `nixhub` | Find the nixpkgs commit where a version of a package exists |
+| **Home Manager** | `homemanager` | Search Home Manager options and list releases |
+| **Nixvim** | `nixvim` | Search and show Nixvim options |
+| **nix-darwin** | `nix-darwin` | Search and show nix-darwin options |
+| **NixHub** | `nixhub` | Find the nixpkgs commit where a version of a package exists |
 
 ### Including tools
 
 * **By category**
-  * Pass the category's ID as an argument: `uvx mcp-nix --homemanager --nixvim`
+  * Pass the category's ID as an argument: `--homemanager --nixvim`
 * **By name**
-  * Use --include: `uvx mcp-nix --include=list_package_versions`
+  * Use --include: `--include=list_package_versions`
 
 ### Excluding tools
 
-Excluding tools you don't use reduces context usage and reduces the chance that the model picks the wrong tool.
-
 * **By category**
-  * Prefix the category's ID by "no": `uvx mcp-nix --no-nixos --nix-darwin`
+  * Prefix the category's ID by "no-": `--no-nixos`
 * **By name**
-  * Use --exclude: `uvx mcp-nix --exclude=find_nixpkgs_commit_with_package_version`
+  * Use --exclude: `--exclude=find_nixpkgs_commit_with_package_version`
 
 ### List of tools
 
