@@ -2,15 +2,14 @@
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
 
-## Features
+## Supported tools
 
-- **Tools**
-  - **Nixpkgs** — Search packages across the Nix package collection
-  - **NixOS** — Explore NixOS configuration options and modules
-  - **Home Manager** — Configure user environments declaratively
-  - **Nixvim** — Neovim configuration through Nix
-  - **nix-darwin** — macOS system configuration with Nix
-  - **NixHub** — Find specific package versions and their nixpkgs commits
+- **Nixpkgs** — Search packages across the Nix package collection
+- **NixOS** — Explore NixOS configuration options and modules
+- **Home Manager** — Configure user environments declaratively
+- **Nixvim** — Neovim configuration through Nix
+- **nix-darwin** — macOS system configuration with Nix
+- **NixHub** — Find specific package versions and their nixpkgs commits
 
 > [!NOTE]
 > By default, only **Nixpkgs** and **NixOS** categories are enabled. Use the [flags](#tools) below to enable additional features.
