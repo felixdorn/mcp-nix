@@ -11,7 +11,6 @@
 - nix-darwin
 - NixHub
 
-> [!NOTE]
 > Without additonal configuration, only **Nixpkgs** and **NixOS** categories are included.
 
 
