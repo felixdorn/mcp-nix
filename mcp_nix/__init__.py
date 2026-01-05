@@ -20,6 +20,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     ],
     "nixvim": ["search_nixvim_options", "show_nixvim_option", "read_nixvim_declaration"],
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option", "read_nix_darwin_declaration"],
+    "impermanence": ["search_impermanence_options", "show_impermanence_option", "read_impermanence_declaration"],
     "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
     "noogle": ["search_nix_stdlib", "help_for_stdlib_function"],
 }
@@ -31,6 +32,7 @@ DEFAULT_EXCLUDED_TOOLS: set[str] = {
     "read_home_module",
     "read_nixvim_declaration",
     "read_nix_darwin_declaration",
+    "read_impermanence_declaration",
 }
 
 CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
@@ -39,6 +41,7 @@ CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "homemanager": False,
     "nixvim": False,
     "nix-darwin": False,
+    "impermanence": False,
     "nixhub": False,
     "noogle": False,
 }
@@ -156,6 +159,12 @@ def parse_args() -> argparse.Namespace:
         help="Include nix-darwin option search tools (default: excluded)",
     )
     parser.add_argument(
+        "--impermanence",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Include impermanence option search tools (default: excluded)",
+    )
+    parser.add_argument(
         "--nixhub",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -215,6 +224,7 @@ def main() -> None:
         "homemanager": args.homemanager,
         "nixvim": args.nixvim,
         "nix-darwin": args.nix_darwin,
+        "impermanence": args.impermanence,
         "nixhub": args.nixhub,
         "noogle": args.noogle,
     }

@@ -36,6 +36,12 @@ PROJECTS = {
         "scope": "nix-darwin",  # Scope name in nuschtos instance
         "description": "Nix modules for Darwin (macOS)",
     },
+    "impermanence": {
+        "name": "impermanence",
+        "instance": "nuschtos",
+        "scope": "impermanence",
+        "description": "Opt-in persistence on NixOS with ephemeral root",
+    },
 }
 
 CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour

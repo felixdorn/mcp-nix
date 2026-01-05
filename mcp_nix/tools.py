@@ -597,6 +597,97 @@ async def read_nix_darwin_declaration(name: str) -> str:
 
 
 @mcp.tool()
+async def search_impermanence_options(query: str) -> str:
+    """Search impermanence configuration options.
+
+    Impermanence provides opt-in persistence for NixOS systems with ephemeral root.
+    Search for options to configure which files and directories to persist across reboots.
+
+    Args:
+        query: Option name or keyword (e.g., "directories", "files", "users")
+    """
+    try:
+        result = NuschtosSearch.search_options(query, _SEARCH_LIMIT, "impermanence")
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No impermanence options found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} impermanence options:\n"
+    else:
+        header = f"Found {len(result.items)} impermanence options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
+
+
+@mcp.tool()
+async def show_impermanence_option(name: str) -> str:
+    """Get details for an impermanence option, or list all children if given a prefix.
+
+    For leaf options like "environment.persistence.<name>.directories", returns type, default, and description.
+    For prefixes like "environment.persistence", lists ALL child options exhaustively.
+
+    Args:
+        name: Option path or prefix (e.g., "environment.persistence" or "home.persistence")
+    """
+    try:
+        # Try exact match first
+        opt = NuschtosSearch.get_option(name, "impermanence")
+        if opt is not None:
+            result = str(opt)
+            if opt.declarations:
+                url = opt.declarations[0]
+                line_count = get_line_count(url)
+                if line_count:
+                    result += f"\nReference: {url} ({line_count} lines, use read_impermanence_declaration to read)"
+                else:
+                    result += f"\nReference: {url}"
+            return result
+
+        # No exact match - get all children with this prefix
+        children = NuschtosSearch.get_option_children(name, "impermanence")
+        if children:
+            header = f"'{name}' has {len(children)} child options:\n"
+            return header + "\n\n".join(o.format_short() for o in children)
+
+        return f"No option or children found for '{name}'"
+    except APIError as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def read_impermanence_declaration(name: str) -> str:
+    """Read the Nix source code for an impermanence option declaration.
+
+    Fetches and returns the module file that declares an impermanence option.
+    Use search_impermanence_options or show_impermanence_option first to find the option.
+
+    Args:
+        name: Exact option path (e.g., "environment.persistence.<name>.directories")
+    """
+    try:
+        opt = NuschtosSearch.get_option(name, "impermanence")
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No declaration available for '{name}'"
+
+    url = opt.declarations[0]
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
 async def search_nix_stdlib(query: str) -> str:
     """Search Nix standard library functions by name or type signature.
 
