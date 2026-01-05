@@ -9,6 +9,8 @@
 - Home Manager
 - Nixvim
 - nix-darwin
+- impermanence
+- MicroVM.nix
 - NixHub
 - Noogle 
 
@@ -60,6 +62,8 @@ Use the following configuration to add the MCP server to your client:
 | **Home Manager** | `homemanager` | `search_homemanager_options`, `show_homemanager_option`, `list_homemanager_releases`, `read_home_module`[^a] |
 | **Nixvim** | `nixvim` | `search_nixvim_options`, `show_nixvim_option`, `read_nixvim_declaration`[^a] |
 | **nix-darwin** | `nix-darwin` | `search_nix_darwin_options`, `show_nix_darwin_option`, `read_nix_darwin_declaration`[^a] |
+| **impermanence** | `impermanence` | `search_impermanence_options`, `show_impermanence_option`, `read_impermanence_declaration`[^a] |
+| **MicroVM.nix** | `microvm` | `search_microvm_options`, `show_microvm_option`, `read_microvm_declaration`[^a] |
 | **NixHub** | `nixhub` | `list_package_versions`, `find_nixpkgs_commit_with_package_version` |
 | **Noogle** | `noogle` | `search_nix_stdlib`, `help_for_stdlib_function` |
 
@@ -105,6 +109,14 @@ Use the following configuration to add the MCP server to your client:
 | `search_nix_darwin_options` | Search nix-darwin configuration options for macOS |
 | `show_nix_darwin_option` | Get details for a nix-darwin option, or list children if given a prefix |
 | `read_nix_darwin_declaration`[^a] | Get the declaration reference for a nix-darwin option |
+| **impermanence** | |
+| `search_impermanence_options` | Search impermanence configuration options |
+| `show_impermanence_option` | Get details for an impermanence option, or list children if given a prefix |
+| `read_impermanence_declaration`[^a] | Read the Nix source code for an impermanence option declaration |
+| **microvm** | |
+| `search_microvm_options` | Search MicroVM.nix configuration options |
+| `show_microvm_option` | Get details for a MicroVM.nix option, or list children if given a prefix |
+| `read_microvm_declaration`[^a] | Read the Nix source code for a MicroVM.nix option declaration |
 | **nixhub** | |
 | `list_package_versions` | List all available versions for a Nixpkgs package |
 | `find_nixpkgs_commit_with_package_version` | Get the nixpkgs commit hash for a specific package version |
