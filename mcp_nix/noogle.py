@@ -4,13 +4,14 @@
 import gzip
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import platformdirs
 import requests
 from bs4 import BeautifulSoup
-from wasmtime import Engine, Instance, Linker, Memory, Module, Store
+from wasmtime import Engine, Func, Instance, Linker, Memory, Module, Store
 
 from .models import FunctionInput, NoogleExample, NoogleFunction, SearchResult
 from .search import APIError
@@ -69,12 +70,40 @@ class PagefindSearch:
 
     def __init__(self):
         self.session = requests.Session()
-        self.store: Store | None = None
-        self.instance: Instance | None = None
-        self.memory: Memory | None = None
+        self._store: Store | None = None
+        self._instance: Instance | None = None
+        self._memory: Memory | None = None
         self.ptr: int | None = None
         self.loaded_chunks: set[str] = set()
         self.entry: dict | None = None
+
+    @property
+    def store(self) -> Store:
+        """Get the store, ensuring it's initialized."""
+        if self._store is None:
+            raise NoogleError("WASM runtime not initialized")
+        return self._store
+
+    @property
+    def instance(self) -> Instance:
+        """Get the instance, ensuring it's initialized."""
+        if self._instance is None:
+            raise NoogleError("WASM runtime not initialized")
+        return self._instance
+
+    @property
+    def memory(self) -> Memory:
+        """Get the memory, ensuring it's initialized."""
+        if self._memory is None:
+            raise NoogleError("WASM runtime not initialized")
+        return self._memory
+
+    def _get_func(self, name: str) -> Func:
+        """Get a function export by name."""
+        export = self.instance.exports(self.store)[name]
+        if not isinstance(export, Func):
+            raise NoogleError(f"Export '{name}' is not a function")
+        return export
 
     def _fetch(self, path: str) -> bytes:
         """Fetch a resource from Noogle."""
@@ -119,23 +148,26 @@ class PagefindSearch:
 
         # Initialize WASM runtime
         engine = Engine()
-        self.store = Store(engine)
+        self._store = Store(engine)
         module = Module(engine, wasm_bytes)
 
         # Create linker with empty imports (pagefind doesn't need any)
         linker = Linker(engine)
 
         # Instantiate
-        self.instance = linker.instantiate(self.store, module)
-        self.memory = self.instance.exports(self.store)["memory"]
+        self._instance = linker.instantiate(self._store, module)
+        memory_export = self._instance.exports(self._store)["memory"]
+        if not isinstance(memory_export, Memory):
+            raise NoogleError("Memory export is not a Memory object")
+        self._memory = memory_export
 
         # Initialize pagefind with metadata
         self.ptr = self._call_init_pagefind(meta_bytes)
 
     def _write_bytes(self, data: bytes) -> tuple[int, int]:
         """Write bytes to WASM memory and return (ptr, len)."""
-        malloc = self.instance.exports(self.store)["__wbindgen_malloc"]
-        ptr = malloc(self.store, len(data))
+        malloc = self._get_func("__wbindgen_malloc")
+        ptr: int = malloc(self.store, len(data))
         mem_data = self.memory.data_ptr(self.store)
 
         # Write data to memory
@@ -156,21 +188,20 @@ class PagefindSearch:
 
     def _call_init_pagefind(self, meta_bytes: bytes) -> int:
         """Call init_pagefind and return the pointer."""
-        init_fn = self.instance.exports(self.store)["init_pagefind"]
+        init_fn = self._get_func("init_pagefind")
         ptr, length = self._write_bytes(meta_bytes)
         return init_fn(self.store, ptr, length)
 
     def _call_request_indexes(self, query: str) -> str:
         """Get required index chunks for a query."""
-        exports = self.instance.exports(self.store)
-        request_indexes = exports["request_indexes"]
-        add_to_stack = exports["__wbindgen_add_to_stack_pointer"]
-        free = exports["__wbindgen_free"]
+        request_indexes = self._get_func("request_indexes")
+        add_to_stack = self._get_func("__wbindgen_add_to_stack_pointer")
+        free = self._get_func("__wbindgen_free")
 
         query_ptr, query_len = self._write_string(query)
 
         # Allocate return space on stack
-        retptr = add_to_stack(self.store, -16)
+        retptr: int = add_to_stack(self.store, -16)
 
         request_indexes(self.store, retptr, self.ptr, query_ptr, query_len)
 
@@ -189,22 +220,21 @@ class PagefindSearch:
 
     def _call_load_index_chunk(self, chunk_bytes: bytes):
         """Load an index chunk into the search engine."""
-        load_fn = self.instance.exports(self.store)["load_index_chunk"]
+        load_fn = self._get_func("load_index_chunk")
         ptr, length = self._write_bytes(chunk_bytes)
         self.ptr = load_fn(self.store, self.ptr, ptr, length)
 
     def _call_search(self, query: str, filters: str = "{}", sort: str = "", exact: bool = False) -> str:
         """Execute search and return raw results."""
-        exports = self.instance.exports(self.store)
-        search_fn = exports["search"]
-        add_to_stack = exports["__wbindgen_add_to_stack_pointer"]
-        free = exports["__wbindgen_free"]
+        search_fn = self._get_func("search")
+        add_to_stack = self._get_func("__wbindgen_add_to_stack_pointer")
+        free = self._get_func("__wbindgen_free")
 
         query_ptr, query_len = self._write_string(query)
         filter_ptr, filter_len = self._write_string(filters)
         sort_ptr, sort_len = self._write_string(sort)
 
-        retptr = add_to_stack(self.store, -16)
+        retptr: int = add_to_stack(self.store, -16)
 
         search_fn(
             self.store,
@@ -248,7 +278,7 @@ class PagefindSearch:
 
     def search(self, query: str, limit: int = 20) -> tuple[list[NoogleFunction], int]:
         """Search for functions. Returns (results, total_count)."""
-        if self.instance is None:
+        if self._instance is None:
             self._init_wasm()
 
         # Normalize query
@@ -339,7 +369,7 @@ def _extract_next_data(html: str) -> list[Any]:
     return chunks
 
 
-def _find_in_structure(data: Any, predicate: callable) -> list[Any]:
+def _find_in_structure(data: Any, predicate: Callable[[Any], bool]) -> list[Any]:
     """Recursively find all items matching predicate in nested structure."""
     results = []
 
@@ -442,7 +472,13 @@ def _parse_noogle_data(chunks: list[Any]) -> NoogleFunction:
         for link in links:
             href = link["href"]
             alias_path = href.replace("/f/", "").replace("/", ".")
-            if alias_path and alias_path != path and alias_path not in aliases and alias_path.startswith("lib.") and "#" not in alias_path:
+            if (
+                alias_path
+                and alias_path != path
+                and alias_path not in aliases
+                and alias_path.startswith("lib.")
+                and "#" not in alias_path
+            ):
                 aliases.append(alias_path)
 
     type_signature = None
