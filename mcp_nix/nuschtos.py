@@ -42,6 +42,12 @@ PROJECTS = {
         "scope": "impermanence",
         "description": "Opt-in persistence on NixOS with ephemeral root",
     },
+    "microvm": {
+        "name": "MicroVM.nix",
+        "instance": "nuschtos",
+        "scope": "MicroVM.nix",
+        "description": "Declarative NixOS MicroVMs",
+    },
 }
 
 CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour

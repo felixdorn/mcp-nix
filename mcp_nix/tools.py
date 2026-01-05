@@ -688,6 +688,97 @@ async def read_impermanence_declaration(name: str) -> str:
 
 
 @mcp.tool()
+async def search_microvm_options(query: str) -> str:
+    """Search MicroVM.nix configuration options.
+
+    MicroVM.nix provides declarative NixOS MicroVMs using various hypervisors
+    like cloud-hypervisor, firecracker, qemu, and more.
+
+    Args:
+        query: Option name or keyword (e.g., "hypervisor", "shares", "interfaces")
+    """
+    try:
+        result = NuschtosSearch.search_options(query, _SEARCH_LIMIT, "microvm")
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No MicroVM.nix options found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} MicroVM.nix options:\n"
+    else:
+        header = f"Found {len(result.items)} MicroVM.nix options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
+
+
+@mcp.tool()
+async def show_microvm_option(name: str) -> str:
+    """Get details for a MicroVM.nix option, or list all children if given a prefix.
+
+    For leaf options like "microvm.hypervisor", returns type, default, and description.
+    For prefixes like "microvm.shares", lists ALL child options exhaustively.
+
+    Args:
+        name: Option path or prefix (e.g., "microvm.hypervisor" or "microvm.shares")
+    """
+    try:
+        # Try exact match first
+        opt = NuschtosSearch.get_option(name, "microvm")
+        if opt is not None:
+            result = str(opt)
+            if opt.declarations:
+                url = opt.declarations[0]
+                line_count = get_line_count(url)
+                if line_count:
+                    result += f"\nReference: {url} ({line_count} lines, use read_microvm_declaration to read)"
+                else:
+                    result += f"\nReference: {url}"
+            return result
+
+        # No exact match - get all children with this prefix
+        children = NuschtosSearch.get_option_children(name, "microvm")
+        if children:
+            header = f"'{name}' has {len(children)} child options:\n"
+            return header + "\n\n".join(o.format_short() for o in children)
+
+        return f"No option or children found for '{name}'"
+    except APIError as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def read_microvm_declaration(name: str) -> str:
+    """Read the Nix source code for a MicroVM.nix option declaration.
+
+    Fetches and returns the module file that declares a MicroVM.nix option.
+    Use search_microvm_options or show_microvm_option first to find the option.
+
+    Args:
+        name: Exact option path (e.g., "microvm.hypervisor")
+    """
+    try:
+        opt = NuschtosSearch.get_option(name, "microvm")
+    except APIError as e:
+        return _format_error(e)
+
+    if opt is None:
+        return f"Error: Option '{name}' not found"
+
+    if not opt.declarations:
+        return f"Error: No declaration available for '{name}'"
+
+    url = opt.declarations[0]
+
+    try:
+        source = fetch_source(url)
+    except APIError as e:
+        return _format_error(e)
+
+    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+
+
+@mcp.tool()
 async def search_nix_stdlib(query: str) -> str:
     """Search Nix standard library functions by name or type signature.
 
