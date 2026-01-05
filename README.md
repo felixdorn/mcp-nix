@@ -10,7 +10,7 @@
 - Nixvim
 - nix-darwin
 - NixHub
-- Noogle (Nix standard library)
+- Noogle 
 
 > Without additional configuration, only **Nixpkgs** and **NixOS** categories are included.
 
