@@ -1,24 +1,6 @@
 # A tasteful MCP server for the Nix ecosystem
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
-
-## Ecosystem coverage
-
-- Nixpkgs
-- NixOS
-- Home Manager
-- Nixvim
-- nix-darwin
-- impermanence
-- MicroVM.nix
-- nix-nomad
-- NixHub
-- Noogle
-
-> Without additional configuration, only **Nixpkgs** and **NixOS** categories are included.
-
-
-
 ## Installation
 
 Use the following configuration to add the MCP server to your client:
@@ -49,45 +31,46 @@ Use the following configuration to add the MCP server to your client:
 
 ## Tools
 
-* **Categories included by default:**
+All tools are enabled by default.
 
-| Category | ID | Tools |
-|----------|-----|-------|
-| **Nixpkgs** | `nixpkgs` | `search_nixpkgs`, `show_nixpkgs_package`, `read_derivation`[^a] |
-| **NixOS** | `nixos` | `search_nixos_options`, `show_nixos_option`, `list_nixos_channels`, `read_nixos_module`[^a] |
+| Tool | Description |
+|------|-------------|
+| `search_nixpkgs` | Search Nixpkgs packages |
+| `read_derivation` | Read package source code |
+| `search_options` | Search options for many projects |
+| `list_versions` | List available versions for a project |
+| `show_option_details` | Get option details or list children |
+| `read_option_declaration` | Read option source code |
+| `find_nixpkgs_commit_with_package_version` | Get nixpkgs commit for a version, shows available versions if not found (NixHub) |
+| `search_nix_stdlib` | Search Nix stdlib functions (Noogle) |
+| `help_for_stdlib_function` | Get help for a stdlib function (Noogle) |
 
-* **Categories excluded by default**
+### Supported Projects for Options
 
-| Category | ID | Tools |
-|----------|-----|-------|
-| **Home Manager** | `homemanager` | `search_homemanager_options`, `show_homemanager_option`, `list_homemanager_releases`, `read_home_module`[^a] |
-| **Nixvim** | `nixvim` | `search_nixvim_options`, `show_nixvim_option`, `read_nixvim_declaration`[^a] |
-| **nix-darwin** | `nix-darwin` | `search_nix_darwin_options`, `show_nix_darwin_option`, `read_nix_darwin_declaration`[^a] |
-| **impermanence** | `impermanence` | `search_impermanence_options`, `show_impermanence_option`, `read_impermanence_declaration`[^a] |
-| **MicroVM.nix** | `microvm` | `search_microvm_options`, `show_microvm_option`, `read_microvm_declaration`[^a] |
-| **nix-nomad** | `nix-nomad` | `search_nix_nomad_options`, `show_nix_nomad_option` |
-| **NixHub** | `nixhub` | `list_package_versions`, `find_nixpkgs_commit_with_package_version` |
-| **Noogle** | `noogle` | `search_nix_stdlib`, `help_for_stdlib_function` |
+| Project | Versions |
+|---------|----------|
+| `nixos` | unstable, 24.11, 25.05, etc. |
+| `homemanager` | unstable, 24.11, 25.05, etc. |
+| `nixvim` | latest only |
+| `nix-darwin` | latest only |
+| `impermanence` | latest only |
+| `microvm` | latest only |
+| `nix-nomad` | latest only (no source reading) |
 
-[^a]: Requires explicit `--include` even when the category is enabled.
+### Excluding Tools
 
-### Including tools
+Use `--exclude` to disable specific tools:
 
-* **By category**
-  * Pass the category's ID as an argument: `--homemanager --nixvim`
-* **By name**
-  * Use --include: `--include=list_package_versions,...`
-
-### Excluding tools
-
-* **By category**
-  * Prefix the category's ID by "no-": `--no-nixos`
-* **By name**
-  * Use --exclude: `--exclude=find_nixpkgs_commit_with_package_version,...`
-
-### Tool Reference
-
-See [docs/REFERENCE.md](docs/REFERENCE.md) for a complete list of tools with descriptions.
+```json
+{
+  "mcpServers": {
+    "nix": {
+      "command": "uvx",
+      "args": ["mcp-nix", "--exclude=read_derivation,read_option_declaration"]
+    }
+  }
+}
+```
 
 ### Contributing
 Read [CONTRIBUTING.md](CONTRIBUTING.md)

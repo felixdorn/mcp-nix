@@ -48,13 +48,23 @@ mcp-nix is an MCP (Model Context Protocol) server that provides AI assistants wi
 ### Prerequisites
 
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv)
+- [uv](https://github.com/astral-sh/uv) - **we use uv exclusively for Python package management**
 - Rust toolchain
 
 ### Using Nix
 
 ```bash
 nix develop
+```
+
+### Running Commands
+
+All Python commands should be run through `uv`:
+
+```bash
+uv run pytest tests/           # Run tests
+uv run mcp-nix                  # Run the server
+uv run ruff check .             # Lint
 ```
 
 ## How Tools Work
