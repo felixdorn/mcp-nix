@@ -1,5 +1,16 @@
-# A tasteful MCP server for the Nix ecosystem
+# A complete MCP server for the Nix ecosystem
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
+
+## Features
+* Search Nixpkgs and read package derivations
+* **Broad options coverage**
+  * NixOS
+  * Home Manager
+  * Nix Darwin
+  * Other: Nixvim Impermanence, MicroVM.nix, nix-nomad, simple-nixos-mailserver, sops-nix, nixos-hardware, disko.
+* Search the nix standard library and read function definitions
+* Find versions of nixpkgs in which a package exists
+* Exclude tools you don't need to optimize context
 
 ## Installation
 
@@ -49,9 +60,7 @@ Then reference the package:
 }
 ```
 
-
-
-## Tools
+### Tools
 
 | Tool | Description |
 |------|-------------|
@@ -64,22 +73,6 @@ Then reference the package:
 | `find_nixpkgs_commit_with_package_version` | Get nixpkgs commit for a version, shows available versions if not found (NixHub) |
 | `search_nix_stdlib` | Search Nix stdlib functions (Noogle) |
 | `help_for_stdlib_function` | Get help for a stdlib function (Noogle) |
-
-### Supported Projects for Options
-
-| Project | Versions |
-|---------|----------|
-| `nixos` | unstable, 24.11, 25.05, etc. |
-| `homemanager` | unstable, 24.11, 25.05, etc. |
-| `nixvim` | latest only |
-| `nix-darwin` | latest only |
-| `impermanence` | latest only |
-| `microvm` | latest only |
-| `nix-nomad` | latest only (no source reading) |
-| `simple-nixos-mailserver` | latest only |
-| `sops-nix` | latest only |
-| `nixos-hardware` | latest only |
-| `disko` | latest only |
 
 ### Excluding Tools
 
@@ -105,4 +98,4 @@ Thanks to the [NixOS Search Team](https://search.nixos.org), [ExtraNix](https://
 ### License
 GPLv3: [License](LICENSE)
 
-<!-- mcp-name: io.github.felixdorn/mcp-nix -->
+    <!-- mcp-name: io.github.felixdorn/mcp-nix -->
