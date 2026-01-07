@@ -2,15 +2,14 @@
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
 ## Features
-* Search Nixpkgs and read package derivations
+* **Search Nixpkgs and read package derivations**
 * **Broad options coverage**
   * NixOS
   * Home Manager
   * Nix Darwin
   * Other: Nixvim Impermanence, MicroVM.nix, nix-nomad, simple-nixos-mailserver, sops-nix, nixos-hardware, disko.
-* Search the nix standard library and read function definitions
-* Find versions of nixpkgs in which a package exists
-* Exclude tools you don't need to optimize context
+* **Search the nix standard library and read function definitions**
+* **Find versions of nixpkgs in which a package exists**
 
 ## Installation
 
