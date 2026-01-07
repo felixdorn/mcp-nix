@@ -1,4 +1,4 @@
-# A complete MCP server for the Nix ecosystem
+# A complete MCP server for Nix*
 [![Tests](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml/badge.svg)](https://github.com/felixdorn/mcp-nix/actions/workflows/test.yml)
 
 ## Features
