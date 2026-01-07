@@ -1,11 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Nixhub.io API integration for package version lookup."""
 
-import json
-
-import requests
-
-from .cache import get_cache, get_or_set
+from .cache import get_cache
 from .models import NixhubCommit, NixhubRelease
 from .search import APIError
 
@@ -34,32 +30,19 @@ class VersionNotFoundError(APIError):
 
 def fetch_package(name: str) -> dict:
     """Fetch package data from Nixhub API or cache."""
+    url = f"{NIXHUB_API_URL}/{name}?_data=routes/_nixhub.packages.$pkg._index"
+    try:
+        resp = _cache.request(url, timeout=10)
+    except APIError as e:
+        if "404" in str(e):
+            raise PackageNotFoundError(name) from e
+        raise
 
-    def fetch() -> dict:
-        url = f"{NIXHUB_API_URL}/{name}?_data=routes/_nixhub.packages.$pkg._index"
-        try:
-            resp = requests.get(url, timeout=10)
-            if resp.status_code == 404:
-                raise PackageNotFoundError(name)
-            resp.raise_for_status()
-        except requests.Timeout as exc:
-            raise APIError("Connection timed out fetching package from Nixhub") from exc
-        except requests.HTTPError as exc:
-            if exc.response is not None and exc.response.status_code == 404:
-                raise PackageNotFoundError(name) from exc
-            raise APIError(f"Failed to fetch package from Nixhub: {exc}") from exc
+    data = resp.json()
+    if not data or "releases" not in data:
+        raise PackageNotFoundError(name)
 
-        try:
-            data = resp.json()
-        except json.JSONDecodeError as exc:
-            raise APIError("Invalid JSON response from Nixhub") from exc
-
-        if not data or "releases" not in data:
-            raise PackageNotFoundError(name)
-
-        return data
-
-    return get_or_set(_cache, f"package:{name}", fetch)
+    return data
 
 
 class NixhubSearch:

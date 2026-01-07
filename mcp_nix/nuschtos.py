@@ -3,12 +3,11 @@
 
 from dataclasses import dataclass, field
 
-import requests
 from pydantic import BaseModel, Field, field_validator
 
 import pyixx
 
-from .cache import DEFAULT_EXPIRE, get_cache, get_or_set
+from .cache import get_cache
 from .models import SearchResult, _lines
 from .search import APIError, InvalidLimitError
 from .utils import html_to_text
@@ -138,24 +137,12 @@ class IndexData:
 
 def _get_index_bytes(instance: str) -> bytes:
     """Get index bytes for an instance, using cache if available."""
+    if instance not in INSTANCES:
+        raise APIError(f"Unknown instance: {instance}")
 
-    def fetch() -> bytes:
-        if instance not in INSTANCES:
-            raise APIError(f"Unknown instance: {instance}")
-
-        base_url = INSTANCES[instance]
-        url = f"{base_url}/index.ixx"
-
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            return resp.content
-        except requests.Timeout as exc:
-            raise APIError(f"Connection timed out fetching index for {instance}") from exc
-        except requests.HTTPError as exc:
-            raise APIError(f"Failed to fetch index for {instance}: {exc}") from exc
-
-    return get_or_set(_cache, f"index:{instance}", fetch, expire=DEFAULT_EXPIRE)
+    url = f"{INSTANCES[instance]}/index.ixx"
+    resp = _cache.request(url, timeout=30)
+    return resp.content
 
 
 def _get_index(instance: str) -> IndexData:
@@ -179,26 +166,13 @@ def _get_chunk(instance: str, chunk: int, index_data: IndexData) -> list[dict]:
     if chunk in index_data.chunks:
         return index_data.chunks[chunk]
 
-    def fetch() -> list[dict]:
-        if instance not in INSTANCES:
-            raise APIError(f"Unknown instance: {instance}")
+    if instance not in INSTANCES:
+        raise APIError(f"Unknown instance: {instance}")
 
-        base_url = INSTANCES[instance]
-        url = f"{base_url}/meta/{chunk}.json"
-
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            return resp.json()
-        except requests.Timeout as exc:
-            raise APIError(f"Connection timed out fetching chunk {chunk} for {instance}") from exc
-        except requests.HTTPError as exc:
-            raise APIError(f"Failed to fetch chunk {chunk} for {instance}: {exc}") from exc
-        except ValueError as exc:
-            raise APIError(f"Failed to parse chunk {chunk} for {instance}: {exc}") from exc
-
+    url = f"{INSTANCES[instance]}/meta/{chunk}.json"
     # Chunks never change, cache forever
-    data = get_or_set(_cache, f"chunk:{instance}:{chunk}", fetch, expire=None)
+    resp = _cache.request(url, expire=None, timeout=30)
+    data = resp.json()
     index_data.chunks[chunk] = data
     return data
 

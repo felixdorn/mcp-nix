@@ -3,9 +3,7 @@
 
 from dataclasses import dataclass
 
-import requests
-
-from .cache import get_cache, get_or_set
+from .cache import get_cache
 from .search import APIError
 
 _cache = get_cache("sources")
@@ -39,26 +37,14 @@ def fetch_source(url: str) -> CachedSource:
         raise APIError("No URL provided")
 
     raw_url = to_raw_url(url)
+    resp = _cache.request(raw_url, timeout=30)
 
-    def fetch() -> CachedSource:
-        try:
-            resp = requests.get(raw_url, timeout=30)
-            resp.raise_for_status()
+    if "text/plain" not in resp.content_type:
+        raise APIError(f"Unexpected content type '{resp.content_type}' from {raw_url}")
 
-            content_type = resp.headers.get("content-type", "").lower()
-            if "text/plain" not in content_type:
-                raise APIError(f"Unexpected content type '{content_type}' from {raw_url}")
-
-            content = resp.text
-        except requests.Timeout as e:
-            raise APIError(f"Connection timed out fetching {raw_url}") from e
-        except requests.HTTPError as e:
-            raise APIError(f"Failed to fetch source: {e}") from e
-
-        line_count = content.count("\n") + 1 if content else 0
-        return CachedSource(content=content, line_count=line_count, url=url)
-
-    return get_or_set(_cache, raw_url, fetch)
+    content = resp.text
+    line_count = content.count("\n") + 1 if content else 0
+    return CachedSource(content=content, line_count=line_count, url=url)
 
 
 def get_line_count(url: str) -> int | None:

@@ -1,13 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """nix-nomad option search via HTML parsing."""
 
-import requests
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, field_validator
 
-from .cache import get_cache, get_or_set
+from .cache import get_cache
 from .models import SearchResult, _lines
-from .search import APIError
 from .utils import html_to_text
 
 NIX_NOMAD_URL = "https://tristanpemble.github.io/nix-nomad/"
@@ -134,19 +132,8 @@ def _parse_options(html: str) -> dict[str, NixNomadOption]:
 
 def _get_options() -> dict[str, NixNomadOption]:
     """Get all options, loading from cache or fetching as needed."""
-
-    def fetch() -> dict[str, NixNomadOption]:
-        try:
-            resp = requests.get(NIX_NOMAD_URL, timeout=30)
-            resp.raise_for_status()
-        except requests.Timeout as exc:
-            raise APIError("Connection timed out fetching nix-nomad documentation") from exc
-        except requests.HTTPError as exc:
-            raise APIError(f"Failed to fetch nix-nomad documentation: {exc}") from exc
-
-        return _parse_options(resp.text)
-
-    return get_or_set(_cache, "options", fetch)
+    resp = _cache.request(NIX_NOMAD_URL, timeout=30)
+    return _parse_options(resp.text)
 
 
 class NixNomadSearch:

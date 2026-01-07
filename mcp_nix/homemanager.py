@@ -3,12 +3,10 @@
 
 from dataclasses import dataclass, field
 
-import requests
-import yaml
 from lunr import lunr
 from lunr.index import Index
 
-from .cache import DEFAULT_EXPIRE, get_cache, get_or_set
+from .cache import DEFAULT_EXPIRE, get_cache
 from .models import HomeManagerOption, HomeManagerRelease, SearchResult
 from .search import APIError, InvalidLimitError
 
@@ -40,25 +38,11 @@ class ReleaseData:
 
 def get_config() -> HomeManagerConfig:
     """Get Home Manager config, using cache if available."""
-
-    def fetch() -> HomeManagerConfig:
-        try:
-            resp = requests.get(CONFIG_URL, timeout=10)
-            resp.raise_for_status()
-        except requests.Timeout as exc:
-            raise APIError("Connection timed out fetching Home Manager config") from exc
-        except requests.HTTPError as exc:
-            raise APIError(f"Failed to fetch Home Manager config: {exc}") from exc
-
-        try:
-            config = yaml.safe_load(resp.text)
-            releases = config.get("params", {}).get("releases", [])
-            default_release = config.get("params", {}).get("release_current_stable", "master")
-            return HomeManagerConfig(releases=releases, default_release=default_release)
-        except yaml.YAMLError as exc:
-            raise APIError(f"Failed to parse Home Manager config: {exc}") from exc
-
-    return get_or_set(_cache, "config", fetch)
+    resp = _cache.request(CONFIG_URL)
+    config = resp.yaml()
+    releases = config.get("params", {}).get("releases", [])
+    default_release = config.get("params", {}).get("release_current_stable", "master")
+    return HomeManagerConfig(releases=releases, default_release=default_release)
 
 
 def _is_stable_release(release_value: str) -> bool:
@@ -68,26 +52,11 @@ def _is_stable_release(release_value: str) -> bool:
 
 def _get_options(release_value: str) -> list[dict]:
     """Get options for a release, using cache if available."""
-
-    def fetch() -> list[dict]:
-        url = f"{OPTIONS_BASE_URL}/options-{release_value}.json"
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-        except requests.Timeout as exc:
-            raise APIError(f"Connection timed out fetching options for {release_value}") from exc
-        except requests.HTTPError as exc:
-            raise APIError(f"Failed to fetch options for {release_value}: {exc}") from exc
-
-        try:
-            data = resp.json()
-            return data.get("options", [])
-        except (ValueError, KeyError) as exc:
-            raise APIError(f"Failed to parse options for {release_value}: {exc}") from exc
-
+    url = f"{OPTIONS_BASE_URL}/options-{release_value}.json"
     # Stable releases cached forever, master for 1 hour
     expire = None if _is_stable_release(release_value) else DEFAULT_EXPIRE
-    return get_or_set(_cache, f"options:{release_value}", fetch, expire=expire)
+    resp = _cache.request(url, expire=expire, timeout=30)
+    return resp.json().get("options", [])
 
 
 def _build_index(options: list[dict]) -> tuple[Index, dict[str, dict]]:
