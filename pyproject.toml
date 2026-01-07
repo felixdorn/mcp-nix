@@ -63,6 +63,7 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=9.0.2",
     "pytest-anyio>=0.0.0",
+    "syrupy>=4.0.0",
     "ruff>=0.8.0",
     "ty>=0.0.8",
 ]

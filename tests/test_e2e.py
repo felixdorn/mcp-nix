@@ -8,15 +8,11 @@ from mcp_nix import tools as _  # noqa: F401 - registers tools
 pytestmark = pytest.mark.anyio
 
 
-async def test_list_tools():
+async def test_list_tools(snapshot):
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         tools = await client.list_tools()
-        tool_names = [t.name for t in tools.tools]
-        assert "search_nixpkgs" in tool_names
-        assert "search_options" in tool_names
-        assert "list_versions" in tool_names
-        assert "show_option_details" in tool_names
-        assert "read_option_declaration" in tool_names
+        tool_names = sorted([t.name for t in tools.tools])
+        assert tool_names == snapshot
 
 
 # =============================================================================
@@ -24,24 +20,17 @@ async def test_list_tools():
 # =============================================================================
 
 
-async def test_search_package():
+async def test_search_package(snapshot):
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_nixpkgs", {"query": "git"})
-        assert result.content
-        text = result.content[0].text
-        assert "git" in text.lower()
+        result = await client.call_tool("search_nixpkgs", {"query": "git", "channel": "25.11"})
+        assert result.content[0].text == snapshot
 
 
-async def test_read_derivation():
+async def test_read_derivation(snapshot):
     """Read derivation source for a package."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("read_derivation", {"name": "git"})
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "Source:" in text
-        assert "lines" in text
-        assert "stdenv" in text or "mkDerivation" in text
+        result = await client.call_tool("read_derivation", {"name": "git", "channel": "25.11"})
+        assert result.content[0].text == snapshot
 
 
 # =============================================================================
@@ -49,204 +38,162 @@ async def test_read_derivation():
 # =============================================================================
 
 
-async def test_search_options_nixos():
+async def test_search_options_nixos(snapshot):
     """Search NixOS options via unified tool."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_options", {"project": "nixos", "query": "nginx"})
-        assert result.content
-        text = result.content[0].text
-        assert "nginx" in text.lower()
+        result = await client.call_tool("search_options", {"project": "nixos", "query": "time.timeZone", "version": "25.11"})
+        assert result.content[0].text == snapshot
 
 
-async def test_search_options_homemanager():
+async def test_search_options_homemanager(snapshot):
     """Search Home Manager options via unified tool."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_options", {"project": "homemanager", "query": "git"})
-        assert result.content
-        text = result.content[0].text
-        assert "git" in text.lower()
+        result = await client.call_tool(
+            "search_options", {"project": "homemanager", "query": "git", "version": "25.11"}
+        )
+        assert result.content[0].text == snapshot
 
 
-async def test_search_options_nixvim():
+async def test_search_options_nixvim(snapshot):
     """Search NixVim options via unified tool."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_options", {"project": "nixvim", "query": "colorscheme"})
-        assert result.content
-        text = result.content[0].text
-        assert "colorscheme" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_search_options_nix_nomad():
+async def test_search_options_nix_nomad(snapshot):
     """Search nix-nomad options via unified tool."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_options", {"project": "nix-nomad", "query": "job"})
-        assert result.content
-        text = result.content[0].text
-        assert "job" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_list_versions_nixos():
+async def test_list_versions_nixos(snapshot):
     """List NixOS versions."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("list_versions", {"project": "nixos"})
-        assert result.content
-        text = result.content[0].text
-        assert "unstable" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_list_versions_homemanager():
+async def test_list_versions_homemanager(snapshot):
     """List Home Manager versions."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("list_versions", {"project": "homemanager"})
-        assert result.content
-        text = result.content[0].text
-        assert "unstable" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_list_versions_latest_only():
+async def test_list_versions_latest_only(snapshot):
     """Projects without versions return just 'latest'."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("list_versions", {"project": "nixvim"})
-        assert result.content
-        text = result.content[0].text
-        assert "latest" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_nixos_leaf():
+async def test_show_option_details_nixos_leaf(snapshot):
     """Leaf option returns full details."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_option_details", {"project": "nixos", "name": "services.nginx.enable"})
-        assert result.content
-        text = result.content[0].text
-        assert "type:" in text.lower()
-        assert "child options" not in text.lower()
+        result = await client.call_tool(
+            "show_option_details", {"project": "nixos", "name": "time.timeZone", "version": "25.11"}
+        )
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_nixos_prefix():
+async def test_show_option_details_nixos_prefix(snapshot):
     """Prefix returns child options."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_option_details", {"project": "nixos", "name": "services.nginx"})
-        assert result.content
-        text = result.content[0].text
-        assert "child options" in text.lower()
+        result = await client.call_tool(
+            "show_option_details", {"project": "nixos", "name": "time", "version": "25.11"}
+        )
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_homemanager_leaf():
+async def test_show_option_details_homemanager_leaf(snapshot):
     """Home Manager leaf option returns full details."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
-            "show_option_details", {"project": "homemanager", "name": "programs.git.enable"}
+            "show_option_details", {"project": "homemanager", "name": "programs.git.enable", "version": "25.11"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "type:" in text.lower()
-        assert "child options" not in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_homemanager_prefix():
+async def test_show_option_details_homemanager_prefix(snapshot):
     """Home Manager prefix returns child options."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_option_details", {"project": "homemanager", "name": "programs.git"})
-        assert result.content
-        text = result.content[0].text
-        assert "child options" in text.lower()
+        result = await client.call_tool(
+            "show_option_details", {"project": "homemanager", "name": "programs.git", "version": "25.11"}
+        )
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_nixvim():
+async def test_show_option_details_nixvim(snapshot):
     """Get NixVim option details."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("show_option_details", {"project": "nixvim", "name": "colorscheme"})
-        assert result.content
-        text = result.content[0].text
-        assert "colorscheme" in text.lower()
-        assert "type:" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_show_option_details_with_reference():
+async def test_show_option_details_with_reference(snapshot):
     """Leaf option includes reference with line count."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("show_option_details", {"project": "nixos", "name": "services.nginx.enable"})
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "lines" in text
-        assert "read_option_declaration" in text
+        result = await client.call_tool(
+            "show_option_details", {"project": "nixos", "name": "time.timeZone", "version": "25.11"}
+        )
+        assert result.content[0].text == snapshot
 
 
-async def test_read_option_declaration_nixos():
+async def test_read_option_declaration_nixos(snapshot):
     """Read NixOS option source code."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
-            "read_option_declaration", {"project": "nixos", "name": "services.nginx.enable"}
+            "read_option_declaration", {"project": "nixos", "name": "time.timeZone", "version": "25.11"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "Source:" in text
-        assert "nginx" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_read_option_declaration_homemanager():
+async def test_read_option_declaration_homemanager(snapshot):
     """Read Home Manager option source code."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
-            "read_option_declaration", {"project": "homemanager", "name": "programs.git.enable"}
+            "read_option_declaration", {"project": "homemanager", "name": "programs.git.enable", "version": "25.11"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "Source:" in text
-        assert "git" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_read_option_declaration_nixvim():
+async def test_read_option_declaration_nixvim(snapshot):
     """Read NixVim option source code."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("read_option_declaration", {"project": "nixvim", "name": "colorscheme"})
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "Source:" in text
+        assert result.content[0].text == snapshot
 
 
-async def test_read_option_declaration_nix_darwin():
+async def test_read_option_declaration_nix_darwin(snapshot):
     """Read nix-darwin option source code."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
-            "read_option_declaration", {"project": "nix-darwin", "name": "system.defaults.dock.autohide"}
+            "read_option_declaration", {"project": "nix-darwin", "name": "system.stateVersion"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "Reference:" in text
-        assert "Source:" in text
+        assert result.content[0].text == snapshot
 
 
-async def test_read_option_declaration_nix_nomad_not_supported():
+async def test_read_option_declaration_nix_nomad_not_supported(snapshot):
     """nix-nomad doesn't support reading declarations."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("read_option_declaration", {"project": "nix-nomad", "name": "job"})
-        assert result.content
-        text = result.content[0].text
-        assert "don't have readable declarations" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_version_fallback():
+async def test_version_fallback(snapshot):
     """Invalid version falls back with warning."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_options", {"project": "nixos", "query": "nginx", "version": "99.99"})
-        assert result.content
-        text = result.content[0].text
-        assert "not found" in text.lower() and "using" in text.lower()
+        result = await client.call_tool("search_options", {"project": "nixos", "query": "time.timeZone", "version": "99.99"})
+        assert result.content[0].text == snapshot
 
 
-async def test_invalid_project():
+async def test_invalid_project(snapshot):
     """Invalid project returns error."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_options", {"project": "invalid-project", "query": "test"})
-        assert result.content
-        text = result.content[0].text
-        assert "error" in text.lower()
-        assert "invalid project" in text.lower()
+        assert result.content[0].text == snapshot
 
 
 # =============================================================================
@@ -254,40 +201,31 @@ async def test_invalid_project():
 # =============================================================================
 
 
-async def test_nixhub_get_commit():
+async def test_nixhub_get_commit(snapshot):
     """Get nixpkgs commit for a specific version."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
             "find_nixpkgs_commit_with_package_version", {"name": "nodejs", "version": "20.11.0"}
         )
-        assert result.content
-        text = result.content[0].text
-        # It's unlikely nodejs 20.11.0 would change, and if it does, its trivially updatable.
-        assert "10b813040df67c4039086db0f6eaf65c536886c6" in text
+        assert result.content[0].text == snapshot
 
 
-async def test_nixhub_version_not_found_shows_available():
+async def test_nixhub_version_not_found_shows_available(snapshot):
     """Non-existent version should return error with available versions."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
             "find_nixpkgs_commit_with_package_version", {"name": "nodejs", "version": "999.999.999"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "error" in text.lower()
-        assert "not found" in text.lower()
-        assert "available" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_nixhub_package_not_found():
+async def test_nixhub_package_not_found(snapshot):
     """Non-existent package should return error."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
             "find_nixpkgs_commit_with_package_version", {"name": "nonexistent-package-xyz123", "version": "1.0.0"}
         )
-        assert result.content
-        text = result.content[0].text
-        assert "error" in text.lower() or "not found" in text.lower()
+        assert result.content[0].text == snapshot
 
 
 # =============================================================================
@@ -295,28 +233,22 @@ async def test_nixhub_package_not_found():
 # =============================================================================
 
 
-async def test_search_nix_stdlib():
+async def test_search_nix_stdlib(snapshot):
     """Search for Nix standard library functions."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_nix_stdlib", {"query": "map"})
-        assert result.content
-        text = result.content[0].text
-        assert "map" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_help_for_stdlib_function():
+async def test_help_for_stdlib_function(snapshot):
     """Get details for a Nix stdlib function."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("help_for_stdlib_function", {"path": "lib.strings.splitString"})
-        assert result.content
-        text = result.content[0].text
-        assert "splitstring" in text.lower()
+        assert result.content[0].text == snapshot
 
 
-async def test_help_for_stdlib_function_not_found():
+async def test_help_for_stdlib_function_not_found(snapshot):
     """Non-existent function should return error."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("help_for_stdlib_function", {"path": "lib.nonexistent.xyz123"})
-        assert result.content
-        text = result.content[0].text
-        assert "error" in text.lower() or "not found" in text.lower()
+        assert result.content[0].text == snapshot

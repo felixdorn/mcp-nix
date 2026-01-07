@@ -1,4 +1,4 @@
-.PHONY: lint check test fmt pyixx-check
+.PHONY: lint check test test-update fmt pyixx-check
 
 lint:
 	uv run ruff check --fix .
@@ -15,6 +15,9 @@ check:
 
 test:
 	uv run pytest
+
+test-update:
+	uv run pytest --snapshot-update
 
 fmt:
 	uv run ruff format .

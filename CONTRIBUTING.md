@@ -389,45 +389,36 @@ The CLI flag is automatically generated from the category name. Users can enable
 
 ## Testing
 
+We use [syrupy](https://github.com/tophat/syrupy) for snapshot testing. Snapshots capture the full output of each tool call.
+
 ### Running Tests
 
 ```bash
 # Run all tests
 make test
 
-# Or run specific test file
-uv run pytest tests/test_e2e.py -v
+# Update snapshots after intentional changes
+make test-update
 ```
 
 ### Writing Tests
 
 ```python
 import pytest
-from mcp import ClientSession
-from mcp.client.stdio import stdio_client, StdioServerParameters
+from mcp.shared.memory import create_connected_server_and_client_session
 
-async def get_client():
-    """Create an MCP client connected to the server."""
-    return stdio_client(StdioServerParameters(
-        command="uv",
-        args=["run", "mcp-nix"],
-    ))
+from mcp_nix import mcp
+from mcp_nix import tools as _  # noqa: F401 - registers tools
 
-@pytest.mark.anyio
-async def test_my_new_tool():
-    async with get_client() as (read, write):
-        async with ClientSession(read, write) as client:
-            await client.initialize()
+pytestmark = pytest.mark.anyio
 
-            # Call the tool
-            result = await client.call_tool("my_new_tool", {
-                "query": "test",
-            })
-
-            # Assert on the result
-            assert len(result) > 0
-            assert "expected text" in result[0].text
+async def test_my_new_tool(snapshot):
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("my_new_tool", {"query": "test"})
+        assert result.content[0].text == snapshot
 ```
+
+Use stable versions (e.g., `25.11`) instead of `unstable` to reduce snapshot churn.
 
 ## Code Style
 
