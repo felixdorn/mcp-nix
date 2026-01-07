@@ -221,10 +221,7 @@ Create a new file `mcp_nix/newservice.py`:
 ```python
 """Client for NewService API."""
 
-import requests
-
-from .cache import get_cache, get_or_set, DEFAULT_EXPIRE
-from .search import APIError
+from .cache import get_cache, APIError
 
 _cache = get_cache("newservice")
 
@@ -236,22 +233,11 @@ class NewServiceError(APIError):
 
 def get_data(query: str) -> list[dict]:
     """Get data from NewService, using cache if available."""
-
-    def fetch() -> list[dict]:
-        try:
-            resp = requests.get(
-                "https://api.newservice.example/search",
-                params={"q": query},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            return resp.json()["results"]
-        except requests.Timeout as exc:
-            raise NewServiceError("Connection timed out") from exc
-        except requests.HTTPError as exc:
-            raise NewServiceError(f"Failed to fetch: {exc}") from exc
-
-    return get_or_set(_cache, f"query:{query}", fetch)
+    url = f"https://api.newservice.example/search?q={query}"
+    try:
+        return _cache.request(url, callback=lambda r: r.json()["results"])
+    except APIError as exc:
+        raise NewServiceError(f"Failed to fetch: {exc}") from exc
 
 
 class NewServiceSearch:
@@ -265,19 +251,68 @@ class NewServiceSearch:
 
 ### Caching
 
-We use [diskcache](https://grantjenks.com/docs/diskcache/) for persistent caching. The `cache.py` module provides two helpers:
+We use [diskcache](https://grantjenks.com/docs/diskcache/) for persistent caching. The `cache.py` module provides a `Cache` class with helper methods:
 
 ```python
-from .cache import get_cache, get_or_set, DEFAULT_EXPIRE
+from .cache import get_cache, DEFAULT_EXPIRE
 
-# Get a namespaced cache instance
-_cache = get_cache("mymodule")
-
-# Get-or-set pattern: returns cached value or calls factory to create it
-value = get_or_set(_cache, "key", factory_fn)                    # 1 hour TTL (default)
-value = get_or_set(_cache, "key", factory_fn, expire=3600)       # Custom TTL in seconds
-value = get_or_set(_cache, "key", factory_fn, expire=None)       # Cache forever
+_cache = get_cache("mymodule")  # Namespaced cache instance
 ```
+
+#### HTTP Requests with Caching
+
+Use `_cache.request()` for HTTP requests. The `callback` transforms the response and serves as validation - if it fails on a cached value, the cache is automatically invalidated and a fresh request is made:
+
+```python
+# Fetch JSON - callback validates by accessing .json()
+data = _cache.request(url, callback=lambda r: r.json())
+
+# Fetch and parse YAML
+config = _cache.request(url, callback=lambda r: r.yaml())
+
+# Fetch HTML and parse with BeautifulSoup
+soup = _cache.request(url, callback=lambda r: r.soup())
+
+# Just get the response (default callback returns as-is)
+resp = _cache.request(url)
+text = resp.text
+content_type = resp.content_type
+
+# Custom TTL
+data = _cache.request(url, callback=lambda r: r.json(), expire=None)      # Forever
+data = _cache.request(url, callback=lambda r: r.json(), expire=3600)      # 1 hour
+```
+
+#### Non-HTTP Caching
+
+Use `_cache.get_or_set()` for caching arbitrary values:
+
+```python
+# Cache result of expensive computation
+value = _cache.get_or_set("key", factory_fn, callback=lambda v: v["data"])
+
+# The callback is optional - defaults to returning the value as-is
+value = _cache.get_or_set("key", factory_fn)
+
+# Custom TTL
+value = _cache.get_or_set("key", factory_fn, expire=None)  # Forever
+```
+
+#### Automatic Cache Recovery
+
+The callback pattern provides automatic recovery from corrupted or outdated cache entries. If the callback fails (e.g., accessing an attribute that doesn't exist), the cached value is deleted and a fresh value is fetched:
+
+```python
+# If cache contains old format without "data" key, callback fails,
+# cache is invalidated, factory is called, and callback succeeds on fresh value
+result = _cache.get_or_set(
+    "key",
+    factory=fetch_new_format,
+    callback=lambda v: v["data"]  # Validates structure by using it
+)
+```
+
+#### Non-Serializable Objects
 
 For data that can't be serialized (e.g., search indices), use in-memory caching alongside disk caching for the raw data:
 
@@ -286,14 +321,11 @@ _cache = get_cache("mymodule")
 _index_cache: dict[str, SearchIndex] = {}  # In-memory for non-serializable objects
 
 def get_index(name: str) -> SearchIndex:
-    # Check in-memory cache first
     if name in _index_cache:
         return _index_cache[name]
 
-    # Get raw data from disk cache
-    raw_data = get_or_set(_cache, f"data:{name}", fetch_raw_data)
-
-    # Build non-serializable object
+    # Cache raw bytes, build index in-memory
+    raw_data = _cache.request(url, callback=lambda r: r.content)
     index = SearchIndex.from_bytes(raw_data)
     _index_cache[name] = index
     return index
