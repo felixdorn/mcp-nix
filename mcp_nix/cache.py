@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
 DEFAULT_EXPIRE = 60 * 60  # 1 hour
+DEFAULT_TIMEOUT = 5  # Aggressive timeout - most APIs respond quickly
 
 
 class APIError(Exception):
@@ -58,7 +59,7 @@ class Cache(diskcache.Cache):
         self,
         key: str,
         factory: Callable[[], T],
-        callback: Callable[[T], R] = lambda x: x,  # type: ignore[assignment]
+        callback: Callable[[T], R],
         expire: float | None = DEFAULT_EXPIRE,
     ) -> R:
         """Get cached value or create with factory, processed through callback.
@@ -87,10 +88,10 @@ class Cache(diskcache.Cache):
     def request[R](
         self,
         url: str,
-        callback: Callable[[CachedResponse], R] = lambda x: x,  # type: ignore[assignment]
+        callback: Callable[[CachedResponse], R],
         *,
         expire: float | None = DEFAULT_EXPIRE,
-        timeout: int = 5,
+        timeout: int = DEFAULT_TIMEOUT,
         **kwargs,
     ) -> R:
         """Fetch URL with caching, processed through callback.

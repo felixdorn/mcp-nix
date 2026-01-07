@@ -32,29 +32,32 @@ class ElasticsearchConfig:
 
 def get_config() -> ElasticsearchConfig:
     """Get Elasticsearch config, using cache if available."""
-    resp = _cache.request("https://search.nixos.org/bundle.js")
-    bundle = resp.text
 
-    schema_match = re.search(r'elasticsearchMappingSchemaVersion:parseInt\("(\d+)"\)', bundle)
-    url_match = re.search(r'elasticsearchUrl:"([^"]+)"', bundle)
-    username_match = re.search(r'elasticsearchUsername:"([^"]+)"', bundle)
-    password_match = re.search(r'elasticsearchPassword:"([^"]+)"', bundle)
-    channels_match = re.search(r"nixosChannels:JSON\.parse\('([^']+)'\)", bundle)
+    def parse_bundle(r) -> ElasticsearchConfig:
+        bundle = r.text
 
-    if not all([schema_match, url_match, username_match, password_match, channels_match]):
-        raise APIError("Failed to extract credentials from search.nixos.org.")
+        schema_match = re.search(r'elasticsearchMappingSchemaVersion:parseInt\("(\d+)"\)', bundle)
+        url_match = re.search(r'elasticsearchUrl:"([^"]+)"', bundle)
+        username_match = re.search(r'elasticsearchUsername:"([^"]+)"', bundle)
+        password_match = re.search(r'elasticsearchPassword:"([^"]+)"', bundle)
+        channels_match = re.search(r"nixosChannels:JSON\.parse\('([^']+)'\)", bundle)
 
-    assert schema_match and url_match and username_match and password_match and channels_match
-    channels_data = json.loads(channels_match.group(1))
+        if not all([schema_match, url_match, username_match, password_match, channels_match]):
+            raise APIError("Failed to extract credentials from search.nixos.org.")
 
-    return ElasticsearchConfig(
-        schema_version=int(schema_match.group(1)),
-        url=url_match.group(1),
-        username=username_match.group(1),
-        password=password_match.group(1),
-        channels=channels_data["channels"],
-        default_channel=channels_data["default"],
-    )
+        assert schema_match and url_match and username_match and password_match and channels_match
+        channels_data = json.loads(channels_match.group(1))
+
+        return ElasticsearchConfig(
+            schema_version=int(schema_match.group(1)),
+            url=url_match.group(1),
+            username=username_match.group(1),
+            password=password_match.group(1),
+            channels=channels_data["channels"],
+            default_channel=channels_data["default"],
+        )
+
+    return _cache.request("https://search.nixos.org/bundle.js", parse_bundle)
 
 
 def get_channels() -> dict[str, str]:

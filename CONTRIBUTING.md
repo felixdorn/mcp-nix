@@ -235,7 +235,7 @@ def get_data(query: str) -> list[dict]:
     """Get data from NewService, using cache if available."""
     url = f"https://api.newservice.example/search?q={query}"
     try:
-        return _cache.request(url, callback=lambda r: r.json()["results"])
+        return _cache.request(url, lambda r: r.json()["results"])
     except APIError as exc:
         raise NewServiceError(f"Failed to fetch: {exc}") from exc
 
@@ -261,41 +261,39 @@ _cache = get_cache("mymodule")  # Namespaced cache instance
 
 #### HTTP Requests with Caching
 
-Use `_cache.request()` for HTTP requests. The `callback` transforms the response and serves as validation - if it fails on a cached value, the cache is automatically invalidated and a fresh request is made:
+Use `_cache.request()` for HTTP requests. The `callback` is required - it transforms the response and serves as validation. If it fails on a cached value, the cache is automatically invalidated and a fresh request is made:
 
 ```python
 # Fetch JSON - callback validates by accessing .json()
-data = _cache.request(url, callback=lambda r: r.json())
+data = _cache.request(url, lambda r: r.json())
 
 # Fetch and parse YAML
-config = _cache.request(url, callback=lambda r: r.yaml())
+config = _cache.request(url, lambda r: r.yaml())
 
 # Fetch HTML and parse with BeautifulSoup
-soup = _cache.request(url, callback=lambda r: r.soup())
+soup = _cache.request(url, lambda r: r.soup())
 
-# Just get the response (default callback returns as-is)
-resp = _cache.request(url)
-text = resp.text
-content_type = resp.content_type
+# Get raw text
+text = _cache.request(url, lambda r: r.text)
 
 # Custom TTL
-data = _cache.request(url, callback=lambda r: r.json(), expire=None)      # Forever
-data = _cache.request(url, callback=lambda r: r.json(), expire=3600)      # 1 hour
+data = _cache.request(url, lambda r: r.json(), expire=None)      # Forever
+data = _cache.request(url, lambda r: r.json(), expire=3600)      # 1 hour
 ```
 
 #### Non-HTTP Caching
 
-Use `_cache.get_or_set()` for caching arbitrary values:
+Use `_cache.get_or_set()` for caching arbitrary values. The `callback` is required:
 
 ```python
 # Cache result of expensive computation
-value = _cache.get_or_set("key", factory_fn, callback=lambda v: v["data"])
+value = _cache.get_or_set("key", factory_fn, lambda v: v["data"])
 
-# The callback is optional - defaults to returning the value as-is
-value = _cache.get_or_set("key", factory_fn)
+# Return value as-is (callback still required)
+value = _cache.get_or_set("key", factory_fn, lambda v: v)
 
 # Custom TTL
-value = _cache.get_or_set("key", factory_fn, expire=None)  # Forever
+value = _cache.get_or_set("key", factory_fn, lambda v: v, expire=None)  # Forever
 ```
 
 #### Automatic Cache Recovery
@@ -325,7 +323,7 @@ def get_index(name: str) -> SearchIndex:
         return _index_cache[name]
 
     # Cache raw bytes, build index in-memory
-    raw_data = _cache.request(url, callback=lambda r: r.content)
+    raw_data = _cache.request(url, lambda r: r.content)
     index = SearchIndex.from_bytes(raw_data)
     _index_cache[name] = index
     return index

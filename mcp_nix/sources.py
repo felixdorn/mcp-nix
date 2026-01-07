@@ -37,14 +37,16 @@ def fetch_source(url: str) -> CachedSource:
         raise APIError("No URL provided")
 
     raw_url = to_raw_url(url)
-    resp = _cache.request(raw_url, timeout=30)
 
-    if "text/plain" not in resp.content_type:
-        raise APIError(f"Unexpected content type '{resp.content_type}' from {raw_url}")
+    def parse_source(r) -> CachedSource:
+        if "text/plain" not in r.content_type:
+            raise APIError(f"Unexpected content type '{r.content_type}' from {raw_url}")
 
-    content = resp.text
-    line_count = content.count("\n") + 1 if content else 0
-    return CachedSource(content=content, line_count=line_count, url=url)
+        content = r.text
+        line_count = content.count("\n") + 1 if content else 0
+        return CachedSource(content=content, line_count=line_count, url=url)
+
+    return _cache.request(raw_url, parse_source)
 
 
 def get_line_count(url: str) -> int | None:

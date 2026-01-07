@@ -38,11 +38,14 @@ class ReleaseData:
 
 def get_config() -> HomeManagerConfig:
     """Get Home Manager config, using cache if available."""
-    resp = _cache.request(CONFIG_URL)
-    config = resp.yaml()
-    releases = config.get("params", {}).get("releases", [])
-    default_release = config.get("params", {}).get("release_current_stable", "master")
-    return HomeManagerConfig(releases=releases, default_release=default_release)
+
+    def parse_config(r) -> HomeManagerConfig:
+        config = r.yaml()
+        releases = config.get("params", {}).get("releases", [])
+        default_release = config.get("params", {}).get("release_current_stable", "master")
+        return HomeManagerConfig(releases=releases, default_release=default_release)
+
+    return _cache.request(CONFIG_URL, parse_config)
 
 
 def _is_stable_release(release_value: str) -> bool:
@@ -55,8 +58,7 @@ def _get_options(release_value: str) -> list[dict]:
     url = f"{OPTIONS_BASE_URL}/options-{release_value}.json"
     # Stable releases cached forever, master for 1 hour
     expire = None if _is_stable_release(release_value) else DEFAULT_EXPIRE
-    resp = _cache.request(url, expire=expire, timeout=30)
-    return resp.json().get("options", [])
+    return _cache.request(url, lambda r: r.json().get("options", []), expire=expire)
 
 
 def _build_index(options: list[dict]) -> tuple[Index, dict[str, dict]]:

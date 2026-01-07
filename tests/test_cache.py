@@ -143,7 +143,7 @@ def test_request_handles_404():
         url = "https://httpbin.org/status/404"
 
         with pytest.raises(APIError, match="404"):
-            cache.request(url)
+            cache.request(url, lambda r: r.json())
 
         # Verify nothing was cached
         assert cache.get(url) is None

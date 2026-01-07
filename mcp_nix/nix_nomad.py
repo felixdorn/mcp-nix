@@ -132,8 +132,7 @@ def _parse_options(html: str) -> dict[str, NixNomadOption]:
 
 def _get_options() -> dict[str, NixNomadOption]:
     """Get all options, loading from cache or fetching as needed."""
-    resp = _cache.request(NIX_NOMAD_URL, timeout=30)
-    return _parse_options(resp.text)
+    return _cache.request(NIX_NOMAD_URL, lambda r: _parse_options(r.text))
 
 
 class NixNomadSearch:

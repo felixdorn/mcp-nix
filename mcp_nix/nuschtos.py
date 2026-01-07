@@ -141,8 +141,7 @@ def _get_index_bytes(instance: str) -> bytes:
         raise APIError(f"Unknown instance: {instance}")
 
     url = f"{INSTANCES[instance]}/index.ixx"
-    resp = _cache.request(url, timeout=30)
-    return resp.content
+    return _cache.request(url, lambda r: r.content)
 
 
 def _get_index(instance: str) -> IndexData:
@@ -170,11 +169,14 @@ def _get_chunk(instance: str, chunk: int, index_data: IndexData) -> list[dict]:
         raise APIError(f"Unknown instance: {instance}")
 
     url = f"{INSTANCES[instance]}/meta/{chunk}.json"
+
+    def use(r):
+        data = r.json()
+        index_data.chunks[chunk] = data
+        return data
+
     # Chunks never change, cache forever
-    resp = _cache.request(url, expire=None, timeout=30)
-    data = resp.json()
-    index_data.chunks[chunk] = data
-    return data
+    return _cache.request(url, use, expire=None)
 
 
 def _get_option_by_idx(instance: str, idx: int, index_data: IndexData) -> dict | None:

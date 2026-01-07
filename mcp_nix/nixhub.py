@@ -31,18 +31,19 @@ class VersionNotFoundError(APIError):
 def fetch_package(name: str) -> dict:
     """Fetch package data from Nixhub API or cache."""
     url = f"{NIXHUB_API_URL}/{name}?_data=routes/_nixhub.packages.$pkg._index"
+
+    def parse_package(r) -> dict:
+        data = r.json()
+        if not data or "releases" not in data:
+            raise PackageNotFoundError(name)
+        return data
+
     try:
-        resp = _cache.request(url, timeout=10)
+        return _cache.request(url, parse_package)
     except APIError as e:
         if "404" in str(e):
             raise PackageNotFoundError(name) from e
         raise
-
-    data = resp.json()
-    if not data or "releases" not in data:
-        raise PackageNotFoundError(name)
-
-    return data
 
 
 class NixhubSearch:
