@@ -27,6 +27,7 @@ Use the following configuration to add the MCP server to your client:
   }
 }
 ```
+[Add to cursor](https://cursor.com/en-US/install-mcp?name=nix&config=eyJjb21tYW5kIjoidXZ4IG1jcC1uaXgifQ%3D%3D)
 
 **Using nix run:**
 
@@ -40,6 +41,7 @@ Use the following configuration to add the MCP server to your client:
   }
 }
 ```
+[Add to cursor](https://cursor.com/en-US/install-mcp?name=nix&config=eyJjb21tYW5kIjoibml4IHJ1biBnaXRodWI6ZmVsaXhkb3JuL21jcC1uaXgifQ%3D%3D)
 
 **Declaratively:**
 
