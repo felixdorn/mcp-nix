@@ -292,3 +292,22 @@ async def test_help_for_stdlib_function_not_found():
         assert result.content
         text = result.content[0].text
         assert "error" in text.lower() or "not found" in text.lower()
+
+
+async def test_search_nix_nomad_options():
+    """Search nix-nomad configuration options."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("search_nix_nomad_options", {"query": "job"})
+        assert result.content
+        text = result.content[0].text
+        assert "job" in text.lower()
+
+
+async def test_show_nix_nomad_option():
+    """Get nix-nomad option details."""
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("show_nix_nomad_option", {"name": "job"})
+        assert result.content
+        text = result.content[0].text
+        assert "job" in text.lower()
+        assert "type:" in text.lower()

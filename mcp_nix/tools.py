@@ -3,6 +3,7 @@
 
 from . import mcp
 from .homemanager import HomeManagerSearch, InvalidReleaseError
+from .nix_nomad import NixNomadSearch
 from .nixhub import NixhubSearch, PackageNotFoundError, VersionNotFoundError
 from .noogle import FunctionNotFoundError, NoogleSearch
 from .nuschtos import InvalidProjectError, NuschtosSearch
@@ -819,3 +820,55 @@ async def help_for_stdlib_function(path: str) -> str:
         return _format_error(e)
 
     return str(func)
+
+
+@mcp.tool()
+async def search_nix_nomad_options(query: str) -> str:
+    """Search nix-nomad configuration options.
+
+    nix-nomad provides Nix modules for defining HashiCorp Nomad job specifications
+    declaratively. Search for job, group, task, service, and network options.
+
+    Args:
+        query: Option name or keyword (e.g., "job", "group", "task", "service", "network")
+    """
+    try:
+        result = NixNomadSearch.search_options(query, _SEARCH_LIMIT)
+    except APIError as e:
+        return _format_error(e)
+
+    if not result.items:
+        return f"No nix-nomad options found matching '{query}'"
+
+    if result.total > len(result.items):
+        header = f"Showing {len(result.items)} of {result.total} nix-nomad options:\n"
+    else:
+        header = f"Found {len(result.items)} nix-nomad options:\n"
+    return header + "\n\n".join(opt.format_short() for opt in result.items)
+
+
+@mcp.tool()
+async def show_nix_nomad_option(name: str) -> str:
+    """Get details for a nix-nomad option, or list all children if given a prefix.
+
+    For leaf options like "job.<name>.datacenters", returns type, default, and description.
+    For prefixes like "job.<name>.group", lists ALL child options exhaustively.
+
+    Args:
+        name: Option path or prefix (e.g., "job.<name>.datacenters" or "job.<name>.group")
+    """
+    try:
+        # Try exact match first
+        opt = NixNomadSearch.get_option(name)
+        if opt is not None:
+            return str(opt)
+
+        # No exact match - get all children with this prefix
+        children = NixNomadSearch.get_option_children(name)
+        if children:
+            header = f"'{name}' has {len(children)} child options:\n"
+            return header + "\n\n".join(o.format_short() for o in children)
+
+        return f"No option or children found for '{name}'"
+    except APIError as e:
+        return _format_error(e)

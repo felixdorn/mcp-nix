@@ -22,6 +22,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     "nix-darwin": ["search_nix_darwin_options", "show_nix_darwin_option", "read_nix_darwin_declaration"],
     "impermanence": ["search_impermanence_options", "show_impermanence_option", "read_impermanence_declaration"],
     "microvm": ["search_microvm_options", "show_microvm_option", "read_microvm_declaration"],
+    "nix-nomad": ["search_nix_nomad_options", "show_nix_nomad_option"],
     "nixhub": ["list_package_versions", "find_nixpkgs_commit_with_package_version"],
     "noogle": ["search_nix_stdlib", "help_for_stdlib_function"],
 }
@@ -45,6 +46,7 @@ CATEGORY_DEFAULT_INCLUSION_STATE: dict[str, bool] = {
     "nix-darwin": False,
     "impermanence": False,
     "microvm": False,
+    "nix-nomad": False,
     "nixhub": False,
     "noogle": False,
 }
@@ -174,6 +176,12 @@ def parse_args() -> argparse.Namespace:
         help="Include MicroVM.nix option search tools (default: excluded)",
     )
     parser.add_argument(
+        "--nix-nomad",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Include nix-nomad option search tools (default: excluded)",
+    )
+    parser.add_argument(
         "--nixhub",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -235,6 +243,7 @@ def main() -> None:
         "nix-darwin": args.nix_darwin,
         "impermanence": args.impermanence,
         "microvm": args.microvm,
+        "nix-nomad": args.nix_nomad,
         "nixhub": args.nixhub,
         "noogle": args.noogle,
     }
