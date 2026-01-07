@@ -5,7 +5,7 @@
 
 Use the following configuration to add the MCP server to your client:
 
-**Using uvx**
+**Using uvx:**
 
 ```json
 {
@@ -18,7 +18,7 @@ Use the following configuration to add the MCP server to your client:
 }
 ```
 
-**Using nix run**
+**Using nix run:**
 
 ```json
 {
@@ -28,6 +28,24 @@ Use the following configuration to add the MCP server to your client:
       "args": ["run", "github:felixdorn/mcp-nix"]
     }
   }
+}
+```
+
+**Declaratively:**
+
+Add the flake input:
+
+```nix
+{
+  inputs.mcp-nix.url = "github:felixdorn/mcp-nix";
+}
+```
+
+Then reference the package:
+
+```nix
+{
+  command = "${inputs.mcp-nix.packages.${system}.default}/bin/mcp-nix";
 }
 ```
 
