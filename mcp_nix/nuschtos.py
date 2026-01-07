@@ -44,6 +44,30 @@ PROJECTS = {
         "scope": "MicroVM.nix",
         "description": "Declarative NixOS MicroVMs",
     },
+    "simple-nixos-mailserver": {
+        "name": "Simple NixOS Mailserver",
+        "instance": "nuschtos",
+        "scope": "simple-nixos-mailserver",
+        "description": "Complete NixOS email server setup",
+    },
+    "sops-nix": {
+        "name": "sops-nix",
+        "instance": "nuschtos",
+        "scope": "sops-nix",
+        "description": "Declarative secrets management with SOPS",
+    },
+    "nixos-hardware": {
+        "name": "NixOS Hardware",
+        "instance": "nuschtos",
+        "scope": "nixos-hardware",
+        "description": "Hardware-specific NixOS modules",
+    },
+    "disko": {
+        "name": "Disko",
+        "instance": "nuschtos",
+        "scope": "disko",
+        "description": "Declarative disk partitioning for NixOS",
+    },
 }
 
 _cache = get_cache("nuschtos")

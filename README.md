@@ -5,6 +5,8 @@
 
 Use the following configuration to add the MCP server to your client:
 
+**Using uvx**
+
 ```json
 {
   "mcpServers": {
@@ -16,7 +18,7 @@ Use the following configuration to add the MCP server to your client:
 }
 ```
 
-### Using Nix
+**Using nix run**
 
 ```json
 {
@@ -29,9 +31,9 @@ Use the following configuration to add the MCP server to your client:
 }
 ```
 
-## Tools
 
-All tools are enabled by default.
+
+## Tools
 
 | Tool | Description |
 |------|-------------|
@@ -56,6 +58,10 @@ All tools are enabled by default.
 | `impermanence` | latest only |
 | `microvm` | latest only |
 | `nix-nomad` | latest only (no source reading) |
+| `simple-nixos-mailserver` | latest only |
+| `sops-nix` | latest only |
+| `nixos-hardware` | latest only |
+| `disko` | latest only |
 
 ### Excluding Tools
 

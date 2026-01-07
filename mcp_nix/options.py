@@ -425,7 +425,19 @@ class NixNomadOptionsBackend:
 # Registry
 # =============================================================================
 
-SUPPORTED_PROJECTS = ["nixos", "homemanager", "nixvim", "nix-darwin", "impermanence", "microvm", "nix-nomad"]
+SUPPORTED_PROJECTS = [
+    "nixos",
+    "homemanager",
+    "nixvim",
+    "nix-darwin",
+    "impermanence",
+    "microvm",
+    "simple-nixos-mailserver",
+    "sops-nix",
+    "nixos-hardware",
+    "disko",
+    "nix-nomad",
+]
 
 # Lazy-loaded backend instances
 _backend_instances: dict[str, OptionsBackend] = {}
@@ -437,7 +449,16 @@ def _create_backend(project: str) -> OptionsBackend:
         return NixOSOptionsBackend()
     elif project == "homemanager":
         return HomeManagerOptionsBackend()
-    elif project in ("nixvim", "nix-darwin", "impermanence", "microvm"):
+    elif project in (
+        "nixvim",
+        "nix-darwin",
+        "impermanence",
+        "microvm",
+        "simple-nixos-mailserver",
+        "sops-nix",
+        "nixos-hardware",
+        "disko",
+    ):
         return NuschtosOptionsBackend(project)
     elif project == "nix-nomad":
         return NixNomadOptionsBackend()
