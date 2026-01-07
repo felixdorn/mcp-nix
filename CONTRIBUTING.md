@@ -222,49 +222,81 @@ Create a new file `mcp_nix/newservice.py`:
 """Client for NewService API."""
 
 import requests
-from pathlib import Path
-from platformdirs import user_cache_dir
 
-CACHE_DIR = Path(user_cache_dir("mcp-nix")) / "newservice"
+from .cache import get_cache, get_or_set, DEFAULT_EXPIRE
+from .search import APIError
+
+_cache = get_cache("newservice")
 
 
-class NewServiceError(Exception):
+class NewServiceError(APIError):
     """Base exception for NewService errors."""
     pass
+
+
+def get_data(query: str) -> list[dict]:
+    """Get data from NewService, using cache if available."""
+
+    def fetch() -> list[dict]:
+        try:
+            resp = requests.get(
+                "https://api.newservice.example/search",
+                params={"q": query},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            return resp.json()["results"]
+        except requests.Timeout as exc:
+            raise NewServiceError("Connection timed out") from exc
+        except requests.HTTPError as exc:
+            raise NewServiceError(f"Failed to fetch: {exc}") from exc
+
+    return get_or_set(_cache, f"query:{query}", fetch)
 
 
 class NewServiceSearch:
     """Search client for NewService."""
 
-    _instance: "NewServiceSearch | None" = None
-
-    def __init__(self):
-        self._cache: dict = {}
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-    @classmethod
-    def get_instance(cls) -> "NewServiceSearch":
-        """Get singleton instance."""
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    async def search(self, query: str) -> list[dict]:
+    @staticmethod
+    def search(query: str) -> list[dict]:
         """Search NewService."""
-        # Check cache first
-        if query in self._cache:
-            return self._cache[query]
+        return get_data(query)
+```
 
-        # Fetch from API
-        response = requests.get(
-            f"https://api.newservice.example/search",
-            params={"q": query},
-        )
-        response.raise_for_status()
+### Caching
 
-        results = response.json()["results"]
-        self._cache[query] = results
-        return results
+We use [diskcache](https://grantjenks.com/docs/diskcache/) for persistent caching. The `cache.py` module provides two helpers:
+
+```python
+from .cache import get_cache, get_or_set, DEFAULT_EXPIRE
+
+# Get a namespaced cache instance
+_cache = get_cache("mymodule")
+
+# Get-or-set pattern: returns cached value or calls factory to create it
+value = get_or_set(_cache, "key", factory_fn)                    # 1 hour TTL (default)
+value = get_or_set(_cache, "key", factory_fn, expire=3600)       # Custom TTL in seconds
+value = get_or_set(_cache, "key", factory_fn, expire=None)       # Cache forever
+```
+
+For data that can't be serialized (e.g., search indices), use in-memory caching alongside disk caching for the raw data:
+
+```python
+_cache = get_cache("mymodule")
+_index_cache: dict[str, SearchIndex] = {}  # In-memory for non-serializable objects
+
+def get_index(name: str) -> SearchIndex:
+    # Check in-memory cache first
+    if name in _index_cache:
+        return _index_cache[name]
+
+    # Get raw data from disk cache
+    raw_data = get_or_set(_cache, f"data:{name}", fetch_raw_data)
+
+    # Build non-serializable object
+    index = SearchIndex.from_bytes(raw_data)
+    _index_cache[name] = index
+    return index
 ```
 
 ### Step 2: Add Models
