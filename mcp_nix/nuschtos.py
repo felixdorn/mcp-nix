@@ -1,17 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """NüschtOS-based option search logic (nixvim, nix-darwin, etc.)."""
 
-import json
-import time
 from dataclasses import dataclass, field
-from pathlib import Path
 
-import platformdirs
 import requests
 from pydantic import BaseModel, Field, field_validator
 
 import pyixx
 
+from .cache import DEFAULT_EXPIRE, get_cache, get_or_set
 from .models import SearchResult, _lines
 from .search import APIError, InvalidLimitError
 from .utils import html_to_text
@@ -50,24 +47,10 @@ PROJECTS = {
     },
 }
 
-CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour
+_cache = get_cache("nuschtos")
 
-# In-memory cache for loaded indices (keyed by instance name)
+# In-memory cache for loaded indices (pyixx.Index can't be serialized)
 _index_cache: dict[str, "IndexData"] = {}
-
-
-def _get_cache_dir() -> Path:
-    """Get the cache directory for NüschtOS data."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix")) / "nuschtos"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
-
-
-def _get_instance_cache_dir(instance: str) -> Path:
-    """Get the cache directory for a specific instance."""
-    cache_dir = _get_cache_dir() / instance
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
 
 
 def _get_instance_for_project(project: str) -> str:
@@ -153,114 +136,41 @@ class IndexData:
     chunks: dict[int, list[dict]] = field(default_factory=dict)
 
 
-def _load_cached_index(instance: str) -> bytes | None:
-    """Load index from cache if valid (1 hour TTL)."""
-    cache_dir = _get_instance_cache_dir(instance)
-    index_path = cache_dir / "index.ixx"
-    meta_path = cache_dir / "index_meta.json"
+def _get_index_bytes(instance: str) -> bytes:
+    """Get index bytes for an instance, using cache if available."""
 
-    if not index_path.exists() or not meta_path.exists():
-        return None
+    def fetch() -> bytes:
+        if instance not in INSTANCES:
+            raise APIError(f"Unknown instance: {instance}")
 
-    try:
-        meta = json.loads(meta_path.read_text())
-        cached_at = meta.get("cached_at", 0)
-        if time.time() - cached_at > CACHE_MAX_AGE_SECONDS:
-            return None
-        return index_path.read_bytes()
-    except (OSError, json.JSONDecodeError):
-        return None
+        base_url = INSTANCES[instance]
+        url = f"{base_url}/index.ixx"
 
+        try:
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            return resp.content
+        except requests.Timeout as exc:
+            raise APIError(f"Connection timed out fetching index for {instance}") from exc
+        except requests.HTTPError as exc:
+            raise APIError(f"Failed to fetch index for {instance}: {exc}") from exc
 
-def _save_index_to_cache(instance: str, data: bytes) -> None:
-    """Save index to cache."""
-    cache_dir = _get_instance_cache_dir(instance)
-    index_path = cache_dir / "index.ixx"
-    meta_path = cache_dir / "index_meta.json"
-
-    index_path.write_bytes(data)
-    meta_path.write_text(json.dumps({"cached_at": time.time()}))
-
-
-def _fetch_index(instance: str) -> bytes:
-    """Fetch index.ixx for an instance."""
-    if instance not in INSTANCES:
-        raise APIError(f"Unknown instance: {instance}")
-
-    base_url = INSTANCES[instance]
-    url = f"{base_url}/index.ixx"
-
-    try:
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        return resp.content
-    except requests.Timeout as exc:
-        raise APIError(f"Connection timed out fetching index for {instance}") from exc
-    except requests.HTTPError as exc:
-        raise APIError(f"Failed to fetch index for {instance}: {exc}") from exc
+    return get_or_set(_cache, f"index:{instance}", fetch, expire=DEFAULT_EXPIRE)
 
 
 def _get_index(instance: str) -> IndexData:
     """Get index for an instance, using cache if available."""
-    # Check in-memory cache
+    # Check in-memory cache (pyixx.Index can't be serialized)
     if instance in _index_cache:
         return _index_cache[instance]
 
-    # Check disk cache
-    data = _load_cached_index(instance)
-    if data is None:
-        data = _fetch_index(instance)
-        _save_index_to_cache(instance, data)
-
-    # Parse index
+    data = _get_index_bytes(instance)
     index = pyixx.Index.read(data)
     meta = index.meta()
     index_data = IndexData(index=index, meta=meta)
 
-    # Cache in memory
     _index_cache[instance] = index_data
     return index_data
-
-
-def _load_cached_chunk(instance: str, chunk: int) -> list[dict] | None:
-    """Load a metadata chunk from cache."""
-    cache_dir = _get_instance_cache_dir(instance)
-    chunk_path = cache_dir / f"meta_{chunk}.json"
-
-    if not chunk_path.exists():
-        return None
-
-    try:
-        return json.loads(chunk_path.read_text())
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _save_chunk_to_cache(instance: str, chunk: int, data: list[dict]) -> None:
-    """Save a metadata chunk to cache."""
-    cache_dir = _get_instance_cache_dir(instance)
-    chunk_path = cache_dir / f"meta_{chunk}.json"
-    chunk_path.write_text(json.dumps(data))
-
-
-def _fetch_chunk(instance: str, chunk: int) -> list[dict]:
-    """Fetch a metadata chunk for an instance."""
-    if instance not in INSTANCES:
-        raise APIError(f"Unknown instance: {instance}")
-
-    base_url = INSTANCES[instance]
-    url = f"{base_url}/meta/{chunk}.json"
-
-    try:
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-    except requests.Timeout as exc:
-        raise APIError(f"Connection timed out fetching chunk {chunk} for {instance}") from exc
-    except requests.HTTPError as exc:
-        raise APIError(f"Failed to fetch chunk {chunk} for {instance}: {exc}") from exc
-    except json.JSONDecodeError as exc:
-        raise APIError(f"Failed to parse chunk {chunk} for {instance}: {exc}") from exc
 
 
 def _get_chunk(instance: str, chunk: int, index_data: IndexData) -> list[dict]:
@@ -269,13 +179,26 @@ def _get_chunk(instance: str, chunk: int, index_data: IndexData) -> list[dict]:
     if chunk in index_data.chunks:
         return index_data.chunks[chunk]
 
-    # Check disk cache
-    data = _load_cached_chunk(instance, chunk)
-    if data is None:
-        data = _fetch_chunk(instance, chunk)
-        _save_chunk_to_cache(instance, chunk, data)
+    def fetch() -> list[dict]:
+        if instance not in INSTANCES:
+            raise APIError(f"Unknown instance: {instance}")
 
-    # Cache in memory
+        base_url = INSTANCES[instance]
+        url = f"{base_url}/meta/{chunk}.json"
+
+        try:
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.Timeout as exc:
+            raise APIError(f"Connection timed out fetching chunk {chunk} for {instance}") from exc
+        except requests.HTTPError as exc:
+            raise APIError(f"Failed to fetch chunk {chunk} for {instance}: {exc}") from exc
+        except ValueError as exc:
+            raise APIError(f"Failed to parse chunk {chunk} for {instance}: {exc}") from exc
+
+    # Chunks never change, cache forever
+    data = get_or_set(_cache, f"chunk:{instance}:{chunk}", fetch, expire=None)
     index_data.chunks[chunk] = data
     return data
 

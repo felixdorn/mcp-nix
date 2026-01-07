@@ -5,10 +5,8 @@ import gzip
 import json
 import re
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
-import platformdirs
 import requests
 from bs4 import BeautifulSoup
 from wasmtime import Engine, Func, Instance, Linker, Memory, Module, Store
@@ -34,16 +32,8 @@ class FunctionNotFoundError(NoogleError):
 
 
 # =============================================================================
-# Caching
+# Singleton
 # =============================================================================
-
-
-def _get_cache_dir() -> Path:
-    """Get the cache directory for Noogle data."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix")) / "noogle"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
-
 
 # In-memory cache for PagefindSearch instance (singleton)
 _pagefind_instance: "PagefindSearch | None" = None

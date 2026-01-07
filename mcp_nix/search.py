@@ -3,28 +3,19 @@
 
 import json
 import re
-import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-import platformdirs
 import requests
 
+from .cache import get_cache, get_or_set
 from .models import Channel, Option, Package, SearchResult
 
-CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour
+_cache = get_cache("search")
 
 
 class APIError(Exception):
     """Custom exception for API-related errors."""
-
-
-def _get_cache_path() -> Path:
-    """Get the path to the config cache file."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix"))
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / "config.json"
 
 
 @dataclass
@@ -38,95 +29,37 @@ class ElasticsearchConfig:
     channels: list[dict[str, str]]
     default_channel: str
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "schema_version": self.schema_version,
-            "url": self.url,
-            "username": self.username,
-            "password": self.password,
-            "channels": self.channels,
-            "default_channel": self.default_channel,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ElasticsearchConfig":
-        """Create from dictionary."""
-        return cls(
-            schema_version=data["schema_version"],
-            url=data["url"],
-            username=data["username"],
-            password=data["password"],
-            channels=data["channels"],
-            default_channel=data["default_channel"],
-        )
-
-
-def _load_cached_config() -> ElasticsearchConfig | None:
-    """Load config from cache if valid."""
-    cache_path = _get_cache_path()
-    if not cache_path.exists():
-        return None
-
-    try:
-        data = json.loads(cache_path.read_text())
-        cached_at = data.get("cached_at", 0)
-        if time.time() - cached_at > CACHE_MAX_AGE_SECONDS:
-            return None
-        return ElasticsearchConfig.from_dict(data["config"])
-    except (json.JSONDecodeError, KeyError, TypeError):
-        return None
-
-
-def _save_config_to_cache(config: ElasticsearchConfig) -> None:
-    """Save config to cache."""
-    cache_path = _get_cache_path()
-    data = {
-        "cached_at": time.time(),
-        "config": config.to_dict(),
-    }
-    cache_path.write_text(json.dumps(data))
-
-
-def fetch_config() -> ElasticsearchConfig:
-    """Fetch and parse Elasticsearch config from bundle.js."""
-    resp = requests.get("https://search.nixos.org/bundle.js", timeout=5)
-    resp.raise_for_status()
-    bundle = resp.text
-
-    # Extract Elm init flags
-    schema_match = re.search(r'elasticsearchMappingSchemaVersion:parseInt\("(\d+)"\)', bundle)
-    url_match = re.search(r'elasticsearchUrl:"([^"]+)"', bundle)
-    username_match = re.search(r'elasticsearchUsername:"([^"]+)"', bundle)
-    password_match = re.search(r'elasticsearchPassword:"([^"]+)"', bundle)
-    channels_match = re.search(r"nixosChannels:JSON\.parse\('([^']+)'\)", bundle)
-
-    if not all([schema_match, url_match, username_match, password_match, channels_match]):
-        raise APIError("Failed to extract credentials from search.nixos.org.")
-
-    # Type narrowing: all matches are guaranteed non-None after the check above
-    assert schema_match and url_match and username_match and password_match and channels_match
-    channels_data = json.loads(channels_match.group(1))
-
-    return ElasticsearchConfig(
-        schema_version=int(schema_match.group(1)),
-        url=url_match.group(1),
-        username=username_match.group(1),
-        password=password_match.group(1),
-        channels=channels_data["channels"],
-        default_channel=channels_data["default"],
-    )
-
 
 def get_config() -> ElasticsearchConfig:
     """Get Elasticsearch config, using cache if available."""
-    cached = _load_cached_config()
-    if cached is not None:
-        return cached
 
-    config = fetch_config()
-    _save_config_to_cache(config)
-    return config
+    def fetch() -> ElasticsearchConfig:
+        resp = requests.get("https://search.nixos.org/bundle.js", timeout=5)
+        resp.raise_for_status()
+        bundle = resp.text
+
+        schema_match = re.search(r'elasticsearchMappingSchemaVersion:parseInt\("(\d+)"\)', bundle)
+        url_match = re.search(r'elasticsearchUrl:"([^"]+)"', bundle)
+        username_match = re.search(r'elasticsearchUsername:"([^"]+)"', bundle)
+        password_match = re.search(r'elasticsearchPassword:"([^"]+)"', bundle)
+        channels_match = re.search(r"nixosChannels:JSON\.parse\('([^']+)'\)", bundle)
+
+        if not all([schema_match, url_match, username_match, password_match, channels_match]):
+            raise APIError("Failed to extract credentials from search.nixos.org.")
+
+        assert schema_match and url_match and username_match and password_match and channels_match
+        channels_data = json.loads(channels_match.group(1))
+
+        return ElasticsearchConfig(
+            schema_version=int(schema_match.group(1)),
+            url=url_match.group(1),
+            username=username_match.group(1),
+            password=password_match.group(1),
+            channels=channels_data["channels"],
+            default_channel=channels_data["default"],
+        )
+
+    return get_or_set(_cache, "config", fetch)
 
 
 def get_channels() -> dict[str, str]:

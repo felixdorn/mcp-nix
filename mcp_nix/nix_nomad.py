@@ -1,25 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """nix-nomad option search via HTML parsing."""
 
-import json
-import time
-from pathlib import Path
-
-import platformdirs
 import requests
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, field_validator
 
+from .cache import get_cache, get_or_set
 from .models import SearchResult, _lines
 from .search import APIError
 from .utils import html_to_text
 
 NIX_NOMAD_URL = "https://tristanpemble.github.io/nix-nomad/"
-CACHE_MAX_AGE_SECONDS = 60 * 60  # 1 hour
 
-# In-memory cache for parsed options
-_options_cache: dict[str, "NixNomadOption"] | None = None
-_cache_loaded_at: float = 0
+_cache = get_cache("nix-nomad")
 
 
 class NixNomadOption(BaseModel):
@@ -62,54 +55,6 @@ class NixNomadOption(BaseModel):
             ("Default", self.default),
             ("Example", self.example),
         )
-
-
-def _get_cache_dir() -> Path:
-    """Get the cache directory for nix-nomad data."""
-    cache_dir = Path(platformdirs.user_cache_dir("mcp-nix")) / "nix-nomad"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
-
-
-def _load_cached_html() -> str | None:
-    """Load HTML from cache if valid (1 hour TTL)."""
-    cache_dir = _get_cache_dir()
-    html_path = cache_dir / "index.html"
-    meta_path = cache_dir / "meta.json"
-
-    if not html_path.exists() or not meta_path.exists():
-        return None
-
-    try:
-        meta = json.loads(meta_path.read_text())
-        cached_at = meta.get("cached_at", 0)
-        if time.time() - cached_at > CACHE_MAX_AGE_SECONDS:
-            return None
-        return html_path.read_text()
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _save_html_to_cache(html: str) -> None:
-    """Save HTML to cache."""
-    cache_dir = _get_cache_dir()
-    html_path = cache_dir / "index.html"
-    meta_path = cache_dir / "meta.json"
-
-    html_path.write_text(html)
-    meta_path.write_text(json.dumps({"cached_at": time.time()}))
-
-
-def _fetch_html() -> str:
-    """Fetch the nix-nomad documentation HTML."""
-    try:
-        resp = requests.get(NIX_NOMAD_URL, timeout=30)
-        resp.raise_for_status()
-        return resp.text
-    except requests.Timeout as exc:
-        raise APIError("Connection timed out fetching nix-nomad documentation") from exc
-    except requests.HTTPError as exc:
-        raise APIError(f"Failed to fetch nix-nomad documentation: {exc}") from exc
 
 
 def _parse_options(html: str) -> dict[str, NixNomadOption]:
@@ -189,23 +134,19 @@ def _parse_options(html: str) -> dict[str, NixNomadOption]:
 
 def _get_options() -> dict[str, NixNomadOption]:
     """Get all options, loading from cache or fetching as needed."""
-    global _options_cache, _cache_loaded_at
 
-    # Check in-memory cache
-    if _options_cache is not None and time.time() - _cache_loaded_at < CACHE_MAX_AGE_SECONDS:
-        return _options_cache
+    def fetch() -> dict[str, NixNomadOption]:
+        try:
+            resp = requests.get(NIX_NOMAD_URL, timeout=30)
+            resp.raise_for_status()
+        except requests.Timeout as exc:
+            raise APIError("Connection timed out fetching nix-nomad documentation") from exc
+        except requests.HTTPError as exc:
+            raise APIError(f"Failed to fetch nix-nomad documentation: {exc}") from exc
 
-    # Try disk cache
-    html = _load_cached_html()
-    if html is None:
-        html = _fetch_html()
-        _save_html_to_cache(html)
+        return _parse_options(resp.text)
 
-    # Parse options
-    _options_cache = _parse_options(html)
-    _cache_loaded_at = time.time()
-
-    return _options_cache
+    return get_or_set(_cache, "options", fetch)
 
 
 class NixNomadSearch:
