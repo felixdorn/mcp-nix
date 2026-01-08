@@ -41,7 +41,9 @@ async def test_read_derivation(snapshot):
 async def test_search_options_nixos(snapshot):
     """Search NixOS options via unified tool."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_options", {"project": "nixos", "query": "time.timeZone", "version": "25.11"})
+        result = await client.call_tool(
+            "search_options", {"project": "nixos", "query": "time.timeZone", "version": "25.11"}
+        )
         assert result.content[0].text == snapshot
 
 
@@ -101,9 +103,7 @@ async def test_show_option_details_nixos_leaf(snapshot):
 async def test_show_option_details_nixos_prefix(snapshot):
     """Prefix returns child options."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool(
-            "show_option_details", {"project": "nixos", "name": "time", "version": "25.11"}
-        )
+        result = await client.call_tool("show_option_details", {"project": "nixos", "name": "time", "version": "25.11"})
         assert result.content[0].text == snapshot
 
 
@@ -185,7 +185,9 @@ async def test_read_option_declaration_nix_nomad_not_supported(snapshot):
 async def test_version_fallback(snapshot):
     """Invalid version falls back with warning."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_options", {"project": "nixos", "query": "time.timeZone", "version": "99.99"})
+        result = await client.call_tool(
+            "search_options", {"project": "nixos", "query": "time.timeZone", "version": "99.99"}
+        )
         assert result.content[0].text == snapshot
 
 
