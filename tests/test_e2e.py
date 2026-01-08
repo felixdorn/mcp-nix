@@ -22,14 +22,16 @@ async def test_list_tools(snapshot):
 
 async def test_search_package(snapshot):
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("search_nixpkgs", {"query": "git", "channel": "25.11"})
+        # Use "ripgrep" - unique package name, less likely to have ordering changes
+        result = await client.call_tool("search_nixpkgs", {"query": "ripgrep", "channel": "25.11"})
         assert result.content[0].text == snapshot
 
 
 async def test_read_derivation(snapshot):
     """Read derivation source for a package."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
-        result = await client.call_tool("read_derivation", {"name": "git", "channel": "25.11"})
+        # Use "ripgrep" - unique pname, won't conflict with other packages like "git" does
+        result = await client.call_tool("read_derivation", {"name": "ripgrep", "channel": "25.11"})
         assert result.content[0].text == snapshot
 
 
@@ -169,8 +171,9 @@ async def test_read_option_declaration_nixvim(snapshot):
 async def test_read_option_declaration_nix_darwin(snapshot):
     """Read nix-darwin option source code."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        # Use programs.zsh.enable - more stable declaration URL in nuschtos
         result = await client.call_tool(
-            "read_option_declaration", {"project": "nix-darwin", "name": "system.stateVersion"}
+            "read_option_declaration", {"project": "nix-darwin", "name": "programs.zsh.enable"}
         )
         assert result.content[0].text == snapshot
 
@@ -212,13 +215,16 @@ async def test_nixhub_get_commit(snapshot):
         assert result.content[0].text == snapshot
 
 
-async def test_nixhub_version_not_found_shows_available(snapshot):
+async def test_nixhub_version_not_found_shows_available():
     """Non-existent version should return error with available versions."""
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool(
             "find_nixpkgs_commit_with_package_version", {"name": "nodejs", "version": "999.999.999"}
         )
-        assert result.content[0].text == snapshot
+        text = result.content[0].text
+        # Don't snapshot the exact count as it changes when new versions are released
+        assert text.startswith("Error: Version '999.999.999' not found for 'nodejs'. Available:")
+        assert "total)" in text
 
 
 async def test_nixhub_package_not_found(snapshot):
