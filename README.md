@@ -7,7 +7,14 @@
   * NixOS
   * Home Manager
   * Nix Darwin
-  * Other: Nixvim Impermanence, MicroVM.nix, nix-nomad, simple-nixos-mailserver, sops-nix, nixos-hardware, disko.
+  * Nixvim
+  * Impermanence
+  * MicroVM.nix
+  * nix-nomad
+  * simple-nixos-mailserver
+  * sops-nix
+  * nixos-hardware
+  * disko
 * **Search the nix standard library and read function definitions**
 * **Find versions of nixpkgs in which a package exists**
 
