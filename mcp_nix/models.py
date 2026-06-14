@@ -44,10 +44,15 @@ class Package(BaseModel):
             return v[0] if v else ""
         return v or ""
 
-    @field_validator("position", mode="before")
+    @field_validator("description", "position", mode="before")
     @classmethod
-    def coerce_position(cls, v):
+    def coerce_optional_str(cls, v):
         return v if v is not None else ""
+
+    @field_validator("licenses", mode="before")
+    @classmethod
+    def coerce_licenses(cls, v):
+        return v if v is not None else []
 
     def format_short(self) -> str:
         """Format for search results listing."""
@@ -77,7 +82,7 @@ class Option(BaseModel):
     example: str = Field(default="", alias="option_example")
     declarations: list[str] = Field(default_factory=list, alias="option_source")
 
-    @field_validator("type", "default", "example", mode="before")
+    @field_validator("description", "type", "default", "example", mode="before")
     @classmethod
     def coerce_none_to_str(cls, v):
         return v if v is not None else ""
@@ -142,7 +147,7 @@ class HomeManagerOption(BaseModel):
     example: str = ""
     declarations: list[dict] = Field(default_factory=list)
 
-    @field_validator("type", "default", "example", mode="before")
+    @field_validator("description", "type", "default", "example", mode="before")
     @classmethod
     def coerce_none_to_str(cls, v):
         return str(v) if v is not None else ""
