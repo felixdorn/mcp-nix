@@ -199,6 +199,21 @@ async def test_invalid_project(snapshot):
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("search_options", {"project": "invalid-project", "query": "test"})
         assert result.content[0].text == snapshot
+        assert result.isError is True
+
+
+async def test_invalid_channel_sets_is_error():
+    """Invalid channel must surface as a tool error (isError=True) on the wire.
+
+    Regression test for the swallowed-tool-error bug where formatted error
+    strings were returned in `content` while `isError` stayed False, causing
+    LLMs to treat the failure as success content. See the recent MCP security
+    audit (Tool Poisoning, Rug Pulls, and Prompt Injections — oh my!).
+    """
+    async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+        result = await client.call_tool("search_nixpkgs", {"query": "git", "channel": "not-a-channel"})
+        assert result.isError is True
+        assert result.content[0].text.startswith("Error:")
 
 
 # =============================================================================
@@ -260,3 +275,4 @@ async def test_help_for_stdlib_function_not_found(snapshot):
     async with create_connected_server_and_client_session(mcp._mcp_server) as client:
         result = await client.call_tool("help_for_stdlib_function", {"path": "lib.nonexistent.xyz123"})
         assert result.content[0].text == snapshot
+        assert result.isError is True
