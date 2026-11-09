@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """MCP tools for Nixpkgs, NixOS and Home Manager."""
 
+from functools import wraps
+
 from fastmcp.exceptions import ToolError
 
 from . import mcp
@@ -11,6 +13,19 @@ from .search import APIError, InvalidChannelError, NixOSSearch
 from .sources import fetch_source, get_line_count
 
 _SEARCH_LIMIT = 20
+
+
+def _handle_api_errors(fn):
+    """Preserve actionable backend failures throughout a tool's execution."""
+
+    @wraps(fn)
+    async def wrapped(*args, **kwargs):
+        try:
+            return await fn(*args, **kwargs)
+        except APIError as exc:
+            raise ToolError(_format_error(exc)) from exc
+
+    return wrapped
 
 
 def _position_to_github_url(position: str, channel: str) -> str | None:
@@ -50,6 +65,7 @@ def _format_error(e: Exception) -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
     """Search for Nixpkgs packages by name or description.
 
@@ -76,6 +92,7 @@ async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def read_derivation(name: str, channel: str = "unstable") -> str:
     """Read the Nix source code for a package derivation.
 
@@ -92,14 +109,14 @@ async def read_derivation(name: str, channel: str = "unstable") -> str:
         raise ToolError(_format_error(e)) from e
 
     if pkg is None:
-        return f"Error: Package '{name}' not found"
+        raise ToolError(f"Error: Package '{name}' not found")
 
     if not pkg.position:
-        return f"Error: No source position available for '{name}'"
+        raise ToolError(f"Error: No source position available for '{name}'")
 
     url = _position_to_github_url(pkg.position, channel)
     if not url:
-        return f"Error: Could not determine source URL for '{name}'"
+        raise ToolError(f"Error: Could not determine source URL for '{name}'")
 
     try:
         source = fetch_source(url)
@@ -115,6 +132,7 @@ async def read_derivation(name: str, channel: str = "unstable") -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def search_options(project: str, query: str, version: str = "") -> str:
     """Search configuration options for a Nix project.
 
@@ -159,6 +177,7 @@ async def search_options(project: str, query: str, version: str = "") -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def list_versions(project: str) -> str:
     """List available versions for a Nix project.
 
@@ -184,6 +203,7 @@ async def list_versions(project: str) -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def show_option_details(project: str, name: str, version: str = "") -> str:
     """Get details for an option, or list all children if given a prefix.
 
@@ -237,6 +257,7 @@ async def show_option_details(project: str, name: str, version: str = "") -> str
 
 
 @mcp.tool()
+@_handle_api_errors
 async def read_option_declaration(project: str, name: str, version: str = "") -> str:
     """Read the Nix source code for an option declaration.
 
@@ -258,7 +279,7 @@ async def read_option_declaration(project: str, name: str, version: str = "") ->
         raise ToolError(_format_error(e)) from e
 
     if not backend.supports_declaration_read():
-        return (
+        raise ToolError(
             f"Error: {project} options don't have readable declarations. "
             "They are auto-generated from external specifications (Nomad HCL)."
         )
@@ -276,11 +297,11 @@ async def read_option_declaration(project: str, name: str, version: str = "") ->
         raise ToolError(_format_error(e)) from e
 
     if opt is None:
-        return f"Error: Option '{name}' not found"
+        raise ToolError(f"Error: Option '{name}' not found")
 
     url = opt.declaration_url
     if not url:
-        return f"Error: No declaration URL available for '{name}'"
+        raise ToolError(f"Error: No declaration URL available for '{name}'")
 
     try:
         source = fetch_source(url)
@@ -296,6 +317,7 @@ async def read_option_declaration(project: str, name: str, version: str = "") ->
 
 
 @mcp.tool()
+@_handle_api_errors
 async def find_nixpkgs_commit_with_package_version(name: str, version: str) -> str:
     """Get the nixpkgs commit hash for a specific package version.
 
@@ -321,6 +343,7 @@ async def find_nixpkgs_commit_with_package_version(name: str, version: str) -> s
 
 
 @mcp.tool()
+@_handle_api_errors
 async def search_nix_stdlib(query: str) -> str:
     """Search Nix standard library functions by name or type signature.
 
@@ -346,6 +369,7 @@ async def search_nix_stdlib(query: str) -> str:
 
 
 @mcp.tool()
+@_handle_api_errors
 async def help_for_stdlib_function(path: str) -> str:
     """Get detailed help for a Nix standard library function.
 

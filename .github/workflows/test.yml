@@ -5,12 +5,9 @@ on:
     branches: [master]
     paths-ignore:
       - '*.md'
-      - '.github/**'
   pull_request:
-    branches: [master]
     paths-ignore:
       - '*.md'
-      - '.github/**'
 
 jobs:
   lint:
@@ -30,7 +27,7 @@ jobs:
         run: make check
 
       - name: pyixx Checks
-        run: make pyixx-check
+        run: uv run --locked make pyixx-check
 
       - name: Rustfmt
         working-directory: pyixx
