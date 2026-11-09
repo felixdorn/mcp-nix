@@ -43,7 +43,7 @@ def fetch_source(url: str) -> CachedSource:
             raise APIError(f"Unexpected content type '{r.content_type}' from {raw_url}")
 
         content = r.text
-        line_count = content.count("\n") + 1 if content else 0
+        line_count = len(content.splitlines())
         return CachedSource(content=content, line_count=line_count, url=url)
 
     return _cache.request(raw_url, parse_source)

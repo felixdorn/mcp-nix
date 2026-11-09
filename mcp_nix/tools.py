@@ -1,387 +1,319 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""MCP tools for Nixpkgs, NixOS and Home Manager."""
+"""Read-only MCP tools with typed results and bounded output."""
 
 from functools import wraps
+from inspect import signature
+from threading import RLock
+from typing import Annotated
 
+from anyio.to_thread import run_sync
 from fastmcp.exceptions import ToolError
+from fastmcp.tools.tool import ToolResult
+from pydantic import BaseModel, Field
 
 from . import mcp
+from .models import NoogleFunction, Package
 from .nixhub import NixhubSearch, PackageNotFoundError, VersionNotFoundError
 from .noogle import FunctionNotFoundError, NoogleSearch
-from .options import InvalidProjectError, get_backend
+from .options import InvalidProjectError, UnifiedOption, get_backend
+from .responses import (
+    CommitResponse,
+    FunctionResponse,
+    OptionResponse,
+    SearchResponse,
+    SourceResponse,
+    VersionsResponse,
+)
 from .search import APIError, InvalidChannelError, NixOSSearch
-from .sources import fetch_source, get_line_count
+from .sources import fetch_source
 
-_SEARCH_LIMIT = 20
+Limit = Annotated[int, Field(ge=1, le=100)]
+LineLimit = Annotated[int, Field(ge=1, le=1000)]
+Name = Annotated[str, Field(min_length=1)]
+_LOCKS: dict[str, RLock] = {}
 
 
-def _handle_api_errors(fn):
-    """Preserve actionable backend failures throughout a tool's execution."""
+def _format_error(exc: Exception) -> str:
+    if isinstance(exc, InvalidChannelError):
+        return f"Error: Invalid channel '{exc.channel}'. Available: {', '.join(exc.available)}"
+    if isinstance(exc, InvalidProjectError):
+        return f"Error: Invalid project '{exc.project}'. Available: {', '.join(exc.available)}"
+    if isinstance(exc, PackageNotFoundError):
+        return f"Error: Package '{exc.name}' not found on nixhub"
+    if isinstance(exc, VersionNotFoundError):
+        versions = ", ".join(exc.available[:5])
+        if len(exc.available) > 5:
+            versions += f", ... ({len(exc.available)} total)"
+        return f"Error: Version '{exc.version}' not found for '{exc.name}'. Available: {versions}"
+    if isinstance(exc, FunctionNotFoundError):
+        return f"Error: Function '{exc.path}' not found on Noogle"
+    return f"Error: {exc}"
 
-    @wraps(fn)
-    async def wrapped(*args, **kwargs):
-        try:
-            return await fn(*args, **kwargs)
-        except APIError as exc:
-            raise ToolError(_format_error(exc)) from exc
 
-    return wrapped
+def _tool(schema: type[BaseModel]):
+    def register(fn):
+        sig = signature(fn)
+
+        @wraps(fn)
+        async def run(*args, **kwargs):
+            arguments = sig.bind(*args, **kwargs).arguments
+            project = arguments.get("project", "")
+            if project:
+                key = project if project in {"nixos", "homemanager", "nixvim", "nix-nomad"} else "nuschtos"
+            elif fn.__name__ in {"search_nixpkgs", "read_derivation"}:
+                key = "nixos"
+            elif fn.__name__ in {"search_nix_stdlib", "help_for_stdlib_function"}:
+                key = "noogle"
+            else:
+                key = "nixhub"
+            lock = _LOCKS.setdefault(key, RLock())
+
+            def invoke():
+                # Serialize shared index/cache state per backend, while other backends and
+                # the protocol event loop remain responsive. HTTP requests have timeouts.
+                with lock:
+                    try:
+                        return fn(*args, **kwargs)
+                    except APIError as exc:
+                        raise ToolError(_format_error(exc)) from exc
+
+            return await run_sync(invoke)
+
+        return mcp.tool(
+            title=fn.__name__.replace("_", " ").title(),
+            annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True},
+            output_schema=schema.model_json_schema(by_alias=False),
+        )(run)
+
+    return register
+
+
+def _reply(response: BaseModel) -> ToolResult:
+    data = response.model_dump(mode="json")
+    return ToolResult(content=data["result"], structured_content=data)
+
+
+def _query(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ToolError("Error: Search query must not be empty")
+    return value
 
 
 def _position_to_github_url(position: str, channel: str) -> str | None:
-    """Convert nixpkgs position to GitHub URL."""
     if not position:
         return None
-    # Position format: path/to/file.nix:line
-    parts = position.split(":")
-    if not parts:
-        return None
-    file_path = parts[0]
     branch = "nixos-unstable" if channel == "unstable" else f"nixos-{channel}"
-    return f"https://github.com/NixOS/nixpkgs/blob/{branch}/{file_path}"
+    return f"https://github.com/NixOS/nixpkgs/blob/{branch}/{position.split(':')[0]}"
 
 
-def _format_error(e: Exception) -> str:
-    """Format an exception for user display."""
-    if isinstance(e, InvalidChannelError):
-        return f"Error: Invalid channel '{e.channel}'. Available: {', '.join(e.available)}"
-    if isinstance(e, InvalidProjectError):
-        return f"Error: Invalid project '{e.project}'. Available: {', '.join(e.available)}"
-    if isinstance(e, PackageNotFoundError):
-        return f"Error: Package '{e.name}' not found on nixhub"
-    if isinstance(e, VersionNotFoundError):
-        versions_preview = ", ".join(e.available[:5])
-        if len(e.available) > 5:
-            versions_preview += f", ... ({len(e.available)} total)"
-        return f"Error: Version '{e.version}' not found for '{e.name}'. Available: {versions_preview}"
-    if isinstance(e, FunctionNotFoundError):
-        return f"Error: Function '{e.path}' not found on Noogle"
-    return f"Error: {e}"
+def _source(url: str, version: str, start_line: int, limit: int, warning: str | None = None) -> ToolResult:
+    source = fetch_source(url)
+    lines = source.content.splitlines()
+    if start_line > max(1, len(lines)):
+        raise ToolError(f"Error: start_line {start_line} exceeds source length ({len(lines)} lines)")
+    end = min(len(lines), start_line - 1 + limit)
+    excerpt = "\n".join(lines[start_line - 1 : end])
+    text = (
+        f"Note: {warning}\n\n" if warning else ""
+    ) + f"Reference: {url}\nSource: lines {start_line}-{end} of {len(lines)}\n\n{excerpt}"
+    next_line = end + 1 if end < len(lines) else None
+    if next_line:
+        text += f"\n\nMore lines available; call again with start_line={next_line}."
+    return _reply(
+        SourceResponse(
+            result=text,
+            url=url,
+            start_line=start_line,
+            end_line=end,
+            total_lines=len(lines),
+            next_start_line=next_line,
+            version=version,
+        )
+    )
 
 
-# =============================================================================
-# Nixpkgs package tools
-# =============================================================================
+@_tool(SearchResponse[Package])
+def search_nixpkgs(query: Name, channel: str = "unstable", limit: Limit = 20) -> ToolResult:
+    """Search Nixpkgs package attributes, versions and descriptions.
 
-
-@mcp.tool()
-@_handle_api_errors
-async def search_nixpkgs(query: str, channel: str = "unstable") -> str:
-    """Search for Nixpkgs packages by name or description.
-
-    Returns package names, versions, and descriptions. For full details (homepage, license), use
-    show_nixpkgs_package with the exact package name.
-
-    Args:
-        query: Package name or keyword (e.g., "git", "video editor")
-        channel: NixOS channel - "unstable" (latest) or version like "24.11", "25.05"
+    Use an exact returned attribute with read_derivation to read package source.
+    channel is unstable or an available release; list_versions(project="nixos") lists releases.
+    limit bounds the number of returned packages (1-100).
     """
-    try:
-        result = NixOSSearch.search_packages(query, _SEARCH_LIMIT, channel)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
+    query = _query(query)
+    result = NixOSSearch.search_packages(query, limit, channel)
+    text = f"Showing {len(result.items)} of {result.total} packages:\n" + "\n\n".join(
+        p.format_short() for p in result.items
+    )
     if not result.items:
-        return f"No packages found matching '{query}'"
+        text = f"No packages found matching '{query}'"
+    return _reply(
+        SearchResponse[Package](
+            result=text, items=result.items, total=result.total, returned=len(result.items), version=channel
+        )
+    )
 
-    if result.total > len(result.items):
-        header = f"Showing {len(result.items)} of {result.total} packages:\n"
-    else:
-        header = f"Found {len(result.items)} packages:\n"
-    return header + "\n\n".join(pkg.format_short() for pkg in result.items)
 
+@_tool(SourceResponse)
+def read_derivation(
+    name: Name, channel: str = "unstable", start_line: Annotated[int, Field(ge=1)] = 1, limit: LineLimit = 200
+) -> ToolResult:
+    """Read a range of lines from a package's Nix source.
 
-@mcp.tool()
-@_handle_api_errors
-async def read_derivation(name: str, channel: str = "unstable") -> str:
-    """Read the Nix source code for a package derivation.
-
-    Fetches and returns the .nix file that defines a package. Use search_nixpkgs
-    first if you don't know the exact package name.
-
-    Args:
-        name: Exact package name (e.g., "git", "firefox")
-        channel: NixOS channel - "unstable" or version like "24.11", "25.05"
+    name is an exact package attribute returned by search_nixpkgs.
+    Follow next_start_line to read more. limit is 1-1000 lines; start_line is one-based.
     """
-    try:
-        pkg = NixOSSearch.get_package(name, channel)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    if pkg is None:
+    package = NixOSSearch.get_package(name, channel)
+    if package is None:
         raise ToolError(f"Error: Package '{name}' not found")
-
-    if not pkg.position:
-        raise ToolError(f"Error: No source position available for '{name}'")
-
-    url = _position_to_github_url(pkg.position, channel)
+    url = _position_to_github_url(package.position, channel)
     if not url:
-        raise ToolError(f"Error: Could not determine source URL for '{name}'")
-
-    try:
-        source = fetch_source(url)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    return f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+        raise ToolError(f"Error: No source position available for '{name}'")
+    return _source(url, channel, start_line, limit)
 
 
-# =============================================================================
-# Unified options tools
-# =============================================================================
+@_tool(SearchResponse[UnifiedOption])
+def search_options(project: Name, query: Name, version: str = "", limit: Limit = 20) -> ToolResult:
+    """Search configuration options by name or description.
 
-
-@mcp.tool()
-@_handle_api_errors
-async def search_options(project: str, query: str, version: str = "") -> str:
-    """Search configuration options for a Nix project.
-
-    Searches NixOS, Home Manager, NixVim, nix-darwin, impermanence, MicroVM, or nix-nomad
-    options by name or description.
-
-    Args:
-        project: Project to search - one of: nixos, homemanager, nixvim, nix-darwin,
-                 impermanence, microvm, nix-nomad
-        query: Search term (e.g., "nginx", "programs.git", "colorscheme")
-        version: Version/channel to search. For nixos: "unstable", "24.11", "25.05".
-                 For homemanager: "unstable", "24.11", "25.05". Other projects only
-                 support "latest". If omitted, uses the default version.
+    project: nixos, homemanager, nixvim, nix-darwin, impermanence, microvm,
+    simple-nixos-mailserver, sops-nix, nixos-hardware, disko, or nix-nomad.
+    Use list_versions(project) to discover versions; an empty version uses the default.
+    limit bounds the number of results (1-100).
     """
-    try:
-        backend = get_backend(project)
-    except InvalidProjectError as e:
-        raise ToolError(_format_error(e)) from e
-
-    # Handle version
-    effective_version = version or backend.get_default_version()
-    effective_version, warning = backend.validate_version(effective_version)
-
-    try:
-        result = backend.search_options(query, _SEARCH_LIMIT, effective_version)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
+    backend = get_backend(project)
+    effective, warning = backend.validate_version(version or backend.get_default_version())
+    result = backend.search_options(_query(query), limit, effective)
+    text = f"Showing {len(result.items)} of {result.total} options:\n" + "\n\n".join(
+        o.format_short() for o in result.items
+    )
     if not result.items:
-        return f"No {project} options found matching '{query}'"
-
-    header = ""
+        text = f"No {project} options found matching '{query}'"
     if warning:
-        header = f"Note: {warning}\n\n"
+        text = f"Note: {warning}\n\n{text}"
+    return _reply(
+        SearchResponse[UnifiedOption](
+            result=text,
+            items=result.items,
+            total=result.total,
+            returned=len(result.items),
+            version=effective,
+            warning=warning,
+        )
+    )
 
-    if result.total > len(result.items):
-        header += f"Showing {len(result.items)} of {result.total} options:\n"
-    else:
-        header += f"Found {len(result.items)} options:\n"
 
-    return header + "\n\n".join(opt.format_short() for opt in result.items)
+@_tool(VersionsResponse)
+def list_versions(project: Name) -> ToolResult:
+    """List valid versions for any project supported by search_options.
 
-
-@mcp.tool()
-@_handle_api_errors
-async def list_versions(project: str) -> str:
-    """List available versions for a Nix project.
-
-    Returns available versions/channels that can be used with the version parameter
-    in search_options and show_option_details.
-
-    Args:
-        project: Project name - one of: nixos, homemanager, nixvim, nix-darwin,
-                 impermanence, microvm, nix-nomad
+    Each record includes its canonical ID, display name and whether it is the default.
     """
-    try:
-        backend = get_backend(project)
-    except InvalidProjectError as e:
-        raise ToolError(_format_error(e)) from e
-
-    try:
-        versions = backend.list_versions()
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    header = f"{project} versions:\n"
-    return header + "\n\n".join(str(v) for v in versions)
+    versions = get_backend(project).list_versions()
+    return _reply(
+        VersionsResponse(result=f"{project} versions:\n" + "\n\n".join(map(str, versions)), versions=versions)
+    )
 
 
-@mcp.tool()
-@_handle_api_errors
-async def show_option_details(project: str, name: str, version: str = "") -> str:
-    """Get details for an option, or list all children if given a prefix.
+@_tool(OptionResponse)
+def show_option_details(
+    project: Name, name: Name, version: str = "", limit: Limit = 50, offset: Annotated[int, Field(ge=0)] = 0
+) -> ToolResult:
+    """Get an exact option, or a page of child options under a prefix.
 
-    For leaf options like "services.nginx.enable", returns type, default, and description.
-    For prefixes like "services.nginx", lists ALL child options exhaustively.
-
-    Args:
-        project: Project name - one of: nixos, homemanager, nixvim, nix-darwin,
-                 impermanence, microvm, nix-nomad
-        name: Option path or prefix (e.g., "services.nginx.enable" or "programs.git")
-        version: Version to use. If omitted, uses the default version.
+    Supports the same projects as search_options. An empty version uses the default.
+    For a prefix, follow next_offset until null to exhaust its children.
+    limit is 1-100 children per call. Source references can be read with read_option_declaration.
     """
-    try:
-        backend = get_backend(project)
-    except InvalidProjectError as e:
-        raise ToolError(_format_error(e)) from e
-
-    effective_version = version or backend.get_default_version()
-    effective_version, warning = backend.validate_version(effective_version)
-
-    header = ""
-    if warning:
-        header = f"Note: {warning}\n\n"
-
-    try:
-        # Try exact match first
-        opt = backend.get_option(name, effective_version)
-        if opt is not None:
-            result = str(opt)
-            if opt.declaration_url:
-                line_count = get_line_count(opt.declaration_url)
-                if line_count and backend.supports_declaration_read():
-                    result += (
-                        f"\nReference: {opt.declaration_url} ({line_count} lines, use read_option_declaration to read)"
-                    )
-                elif line_count:
-                    result += f"\nReference: {opt.declaration_url} ({line_count} lines)"
-                else:
-                    result += f"\nReference: {opt.declaration_url}"
-            return header + result
-
-        # No exact match - get children
-        children = backend.get_option_children(name, effective_version)
-        if children:
-            child_header = f"'{name}' has {len(children)} child options:\n"
-            return header + child_header + "\n\n".join(o.format_short() for o in children)
-
-        return header + f"No option or children found for '{name}'"
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
+    backend = get_backend(project)
+    effective, warning = backend.validate_version(version or backend.get_default_version())
+    option = backend.get_option(name, effective)
+    prefix = f"Note: {warning}\n\n" if warning else ""
+    if option is not None:
+        text = prefix + str(option)
+        if option.declaration_url:
+            text += f"\nReference: {option.declaration_url}"
+        return _reply(OptionResponse(result=text, option=option, total=1, version=effective, warning=warning))
+    children = sorted(backend.get_option_children(name, effective), key=lambda o: o.name)
+    page = children[offset : offset + limit]
+    next_offset = offset + len(page) if offset + len(page) < len(children) else None
+    text = prefix + f"'{name}' has {len(children)} child options; showing {len(page)} from offset {offset}:\n"
+    text += "\n\n".join(o.format_short() for o in page)
+    if not children:
+        text = prefix + f"No option or children found for '{name}'"
+    elif next_offset is not None:
+        text += f"\n\nMore children available; call again with offset={next_offset}."
+    return _reply(
+        OptionResponse(
+            result=text,
+            children=page,
+            total=len(children),
+            offset=offset,
+            next_offset=next_offset,
+            version=effective,
+            warning=warning,
+        )
+    )
 
 
-@mcp.tool()
-@_handle_api_errors
-async def read_option_declaration(project: str, name: str, version: str = "") -> str:
-    """Read the Nix source code for an option declaration.
+@_tool(SourceResponse)
+def read_option_declaration(
+    project: Name, name: Name, version: str = "", start_line: Annotated[int, Field(ge=1)] = 1, limit: LineLimit = 200
+) -> ToolResult:
+    """Read a range of lines from an option's Nix declaration.
 
-    Fetches and returns the module file that declares an option.
-    Use search_options or show_option_details first to find the option name.
-
-    Note: nix-nomad options don't have readable declarations as they are
-    auto-generated from Nomad HCL specifications.
-
-    Args:
-        project: Project name - one of: nixos, homemanager, nixvim, nix-darwin,
-                 impermanence, microvm (nix-nomad not supported)
-        name: Exact option path (e.g., "services.nginx.enable")
-        version: Version to use. If omitted, uses the default version.
+    Supports the projects in search_options, except nix-nomad, whose declarations are generated.
+    Use an exact option name. Follow next_start_line for additional source lines.
     """
-    try:
-        backend = get_backend(project)
-    except InvalidProjectError as e:
-        raise ToolError(_format_error(e)) from e
-
+    backend = get_backend(project)
     if not backend.supports_declaration_read():
         raise ToolError(
             f"Error: {project} options don't have readable declarations. "
             "They are auto-generated from external specifications (Nomad HCL)."
         )
-
-    effective_version = version or backend.get_default_version()
-    effective_version, warning = backend.validate_version(effective_version)
-
-    header = ""
-    if warning:
-        header = f"Note: {warning}\n\n"
-
-    try:
-        opt = backend.get_option(name, effective_version)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    if opt is None:
+    effective, warning = backend.validate_version(version or backend.get_default_version())
+    option = backend.get_option(name, effective)
+    if option is None:
         raise ToolError(f"Error: Option '{name}' not found")
-
-    url = opt.declaration_url
-    if not url:
+    if not option.declaration_url:
         raise ToolError(f"Error: No declaration URL available for '{name}'")
-
-    try:
-        source = fetch_source(url)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    return header + f"Reference: {url}\nSource: {source.line_count} lines\n\n{source.content}"
+    return _source(option.declaration_url, effective, start_line, limit, warning)
 
 
-# =============================================================================
-# NixHub tools
-# =============================================================================
+@_tool(CommitResponse)
+def find_nixpkgs_commit_with_package_version(name: Name, version: Name) -> ToolResult:
+    """Find the nixpkgs commit and attribute for an exact package version using NixHub.
 
-
-@mcp.tool()
-@_handle_api_errors
-async def find_nixpkgs_commit_with_package_version(name: str, version: str) -> str:
-    """Get the nixpkgs commit hash for a specific package version.
-
-    Returns the commit hash that can be used to pin nixpkgs to get
-    this exact package version. If the version is not found, returns
-    available versions for the package.
-
-    Args:
-        name: Package name (e.g., "nodejs", "python")
-        version: Exact version string (e.g., "20.11.0", "3.12.1")
+    If the package or version is unavailable, returns an error with available-version hints.
     """
-    try:
-        commit = NixhubSearch.get_commit(name, version)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    return str(commit)
+    commit = NixhubSearch.get_commit(name, version)
+    return _reply(CommitResponse(result=str(commit), commit=commit))
 
 
-# =============================================================================
-# Noogle tools
-# =============================================================================
+@_tool(SearchResponse[NoogleFunction])
+def search_nix_stdlib(query: Name, limit: Limit = 20) -> ToolResult:
+    """Search Nix function paths, aliases, signatures and documentation on Noogle.
 
-
-@mcp.tool()
-@_handle_api_errors
-async def search_nix_stdlib(query: str) -> str:
-    """Search Nix standard library functions by name or type signature.
-
-    Searches noogle.dev for Nix builtins and lib functions. Use this to find
-    functions for string manipulation, list operations, attribute sets, etc.
-
-    Args:
-        query: Function name or keyword (e.g., "map", "filter", "strings", "attrset")
+    Use help_for_stdlib_function with an exact returned path for complete documentation.
+    limit is 1-100 functions.
     """
-    try:
-        result = NoogleSearch.search_functions(query, _SEARCH_LIMIT)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
+    result = NoogleSearch.search_functions(_query(query), limit)
+    text = f"Showing {len(result.items)} of {result.total} functions:\n" + "\n\n".join(
+        f.format_short() for f in result.items
+    )
     if not result.items:
-        return f"No Nix stdlib functions found matching '{query}'"
-
-    if result.total > len(result.items):
-        header = f"Showing {len(result.items)} of {result.total} functions:\n"
-    else:
-        header = f"Found {len(result.items)} functions:\n"
-    return header + "\n\n".join(fn.format_short() for fn in result.items)
+        text = f"No Nix stdlib functions found matching '{query}'"
+    return _reply(
+        SearchResponse[NoogleFunction](result=text, items=result.items, total=result.total, returned=len(result.items))
+    )
 
 
-@mcp.tool()
-@_handle_api_errors
-async def help_for_stdlib_function(path: str) -> str:
-    """Get detailed help for a Nix standard library function.
+@_tool(FunctionResponse)
+def help_for_stdlib_function(path: Name) -> ToolResult:
+    """Read the signature, arguments, examples and source reference for a Nix function.
 
-    Returns type signature, description, arguments, and examples.
-    Use search_nix_stdlib first if you don't know the exact function path.
-
-    Args:
-        path: Function path (e.g., "lib.strings.splitString", "builtins.map", "lib.attrsets.mapAttrs")
+    path is a function path or alias, e.g. lib.strings.splitString or builtins.map.
     """
-    try:
-        func = NoogleSearch.get_function(path)
-    except APIError as e:
-        raise ToolError(_format_error(e)) from e
-
-    return str(func)
+    function = NoogleSearch.get_function(path)
+    return _reply(FunctionResponse(result=str(function), function=function))
