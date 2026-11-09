@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -57,7 +58,19 @@ def get_config() -> ElasticsearchConfig:
             default_channel=channels_data["default"],
         )
 
-    return _cache.request("https://search.nixos.org/bundle.js", parse_bundle)
+    homepage = "https://search.nixos.org/"
+    scripts = _cache.request(homepage, lambda r: [tag["src"] for tag in r.soup().select("script[src]")])
+    # Asset names are content-hashed. Ignore scripts on other origins.
+    scripts.sort(key=lambda src: not any(name in src for name in ("index.", "bundle")))
+    for src in scripts:
+        url = urljoin(homepage, src)
+        if urlparse(url).netloc != "search.nixos.org":
+            continue
+        try:
+            return _cache.request(url, parse_bundle)
+        except APIError:
+            continue
+    raise APIError("Could not discover the NixOS Search configuration; the upstream site may have changed.")
 
 
 def get_channels() -> dict[str, str]:
@@ -130,7 +143,7 @@ class NixOSSearch:
                     total = hits_data.get("total", {})
                     total_count = total.get("value", 0) if isinstance(total, dict) else total
                     return hits, total_count
-            return [], 0
+            raise APIError("Invalid Elasticsearch response: missing hits")
         except requests.Timeout as exc:
             raise APIError("Connection timed out") from exc
         except requests.HTTPError as exc:
@@ -212,7 +225,16 @@ class NixOSSearch:
     def get_package(name: str, channel: str) -> Package | None:
         """Get detailed info about a package."""
         index = NixOSSearch._get_channel_index(channel)
-        query = {"bool": {"must": [{"term": {"type": "package"}}, {"term": {"package_pname": name}}]}}
+        query = {
+            "bool": {
+                "must": [{"term": {"type": "package"}}],
+                "should": [
+                    {"term": {"package_attr_name": {"value": name, "boost": 10}}},
+                    {"term": {"package_pname": name}},
+                ],
+                "minimum_should_match": 1,
+            }
+        }
         hits, _ = NixOSSearch._es_query(index, query, 1)
         if not hits:
             return None
