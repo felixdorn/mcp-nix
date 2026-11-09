@@ -1,5 +1,6 @@
 """Shared caching utilities using diskcache."""
 
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -19,6 +20,10 @@ DEFAULT_TIMEOUT = 5  # Aggressive timeout - most APIs respond quickly
 
 class APIError(Exception):
     """Custom exception for API-related errors."""
+
+    def __init__(self, message: str, *, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 @dataclass
@@ -79,8 +84,9 @@ class Cache(diskcache.Cache):
                         continue
 
             fresh = factory()
+            result = callback(fresh)
             self.set(key, fresh, expire=expire)
-            return callback(fresh)
+            return result
 
         # Should never reach here, but satisfy type checker
         raise RuntimeError("Unreachable")  # pragma: no cover
@@ -107,7 +113,11 @@ class Cache(diskcache.Cache):
             except requests.Timeout as exc:
                 raise APIError(f"Connection timed out: {url}") from exc
             except requests.HTTPError as exc:
-                raise APIError(f"Request failed ({exc.response.status_code}): {url}") from exc
+                raise APIError(
+                    f"Request failed ({exc.response.status_code}): {url}", status_code=exc.response.status_code
+                ) from exc
+            except requests.RequestException as exc:
+                raise APIError(f"Connection failed: {url}") from exc
 
             return CachedResponse(
                 content=resp.content,
@@ -116,7 +126,23 @@ class Cache(diskcache.Cache):
                 url=str(resp.url),
             )
 
-        return self.get_or_set(url, factory, callback=callback, expire=expire)
+        # Include the effective query, headers, cookies, and auth without persisting secrets.
+        key = url
+        if kwargs:
+            request_args = {
+                k: v for k, v in kwargs.items() if k in {"params", "headers", "cookies", "auth", "data", "json"}
+            }
+            prepared = requests.Request("GET", url, **request_args).prepare()
+            identity = repr((prepared.url, sorted(prepared.headers.items()), prepared.body))
+            key = "request:" + hashlib.sha256(identity.encode()).hexdigest()
+
+        def validate(response: CachedResponse) -> R:
+            try:
+                return callback(response)
+            except (ValueError, KeyError, TypeError, AttributeError) as exc:
+                raise APIError(f"Invalid response from {url}: {exc}") from exc
+
+        return self.get_or_set(key, factory, callback=validate, expire=expire)
 
 
 def get_cache(name: str) -> Cache:
