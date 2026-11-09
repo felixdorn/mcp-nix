@@ -16,7 +16,7 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     env:
-      XDG_CACHE_HOME: ${{ runner.temp }}/mcp-nix-tests
+      XDG_CACHE_HOME: /tmp/mcp-nix-tests
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7.1.6
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      XDG_CACHE_HOME: ${{ runner.temp }}/mcp-nix-live
+      XDG_CACHE_HOME: /tmp/mcp-nix-live
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7.1.6
