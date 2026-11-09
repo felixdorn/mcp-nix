@@ -2,6 +2,7 @@
 """Home Manager option search logic."""
 
 from dataclasses import dataclass, field
+from time import monotonic
 
 from lunr import lunr
 from lunr.index import Index
@@ -32,6 +33,7 @@ class ReleaseData:
     """Loaded release data with search index."""
 
     options: list[dict]
+    expires_at: float
     index: Index
     by_title: dict[str, dict] = field(default_factory=dict)
 
@@ -41,24 +43,28 @@ def get_config() -> HomeManagerConfig:
 
     def parse_config(r) -> HomeManagerConfig:
         config = r.yaml()
-        releases = config.get("params", {}).get("releases", [])
+        releases = [
+            {"name": str(r["name"]), "value": str(r["value"])} for r in config.get("params", {}).get("releases", [])
+        ]
+        if not releases:
+            raise APIError("Home Manager release catalog is empty")
         default_release = config.get("params", {}).get("release_current_stable", "master")
         return HomeManagerConfig(releases=releases, default_release=default_release)
 
     return _cache.request(CONFIG_URL, parse_config)
 
 
-def _is_stable_release(release_value: str) -> bool:
-    """Check if a release is stable (not master/unstable)."""
-    return release_value.startswith("release-")
-
-
 def _get_options(release_value: str) -> list[dict]:
     """Get options for a release, using cache if available."""
     url = f"{OPTIONS_BASE_URL}/options-{release_value}.json"
-    # Stable releases cached forever, master for 1 hour
-    expire = None if _is_stable_release(release_value) else DEFAULT_EXPIRE
-    return _cache.request(url, lambda r: r.json().get("options", []), expire=expire)
+
+    def parse(r):
+        options = r.json()["options"]
+        if not isinstance(options, list) or not options:
+            raise APIError("Home Manager option catalog is empty or invalid")
+        return options
+
+    return _cache.request(url, parse)
 
 
 def _build_index(options: list[dict]) -> tuple[Index, dict[str, dict]]:
@@ -82,12 +88,13 @@ def _build_index(options: list[dict]) -> tuple[Index, dict[str, dict]]:
 def get_release_data(release_value: str) -> ReleaseData:
     """Get release data with search index, using cache."""
     # Check in-memory cache first (lunr Index can't be serialized)
-    if release_value in _release_cache:
-        return _release_cache[release_value]
+    cached = _release_cache.get(release_value)
+    if cached is not None and cached.expires_at > monotonic():
+        return cached
 
     options = _get_options(release_value)
     idx, by_title = _build_index(options)
-    data = ReleaseData(options=options, index=idx, by_title=by_title)
+    data = ReleaseData(options=options, expires_at=monotonic() + DEFAULT_EXPIRE, index=idx, by_title=by_title)
 
     _release_cache[release_value] = data
     return data
@@ -111,7 +118,7 @@ class HomeManagerSearch:
         config = get_config()
         # Check if it's already a valid value
         for r in config.releases:
-            if r["value"] == release or r["name"] == release:
+            if release in (r["value"], str(r["name"]), str(r["name"]).split(" ")[0]):
                 return r["value"]
         # Also accept common aliases
         if release == "unstable":

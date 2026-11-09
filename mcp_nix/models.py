@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from .utils import html_to_text
 
@@ -33,7 +33,8 @@ class Package(BaseModel):
     name: str = Field(alias="package_pname")
     version: str = Field(alias="package_pversion")
     description: str = Field(default="", alias="package_description")
-    homepage: str = ""
+    attribute: str = Field(default="", alias="package_attr_name")
+    homepage: str = Field(default="", validation_alias=AliasChoices("package_homepage", "homepage"))
     licenses: list[str] = Field(default_factory=list, alias="package_license_set")
     position: str = Field(default="", alias="package_position")
 
@@ -44,14 +45,14 @@ class Package(BaseModel):
             return v[0] if v else ""
         return v or ""
 
-    @field_validator("position", mode="before")
+    @field_validator("position", "description", "version", mode="before")
     @classmethod
     def coerce_position(cls, v):
         return v if v is not None else ""
 
     def format_short(self) -> str:
         """Format for search results listing."""
-        lines = [f"• {self.name} ({self.version})"]
+        lines = [f"• {self.attribute or self.name} ({self.version})"]
         if self.description:
             lines.append(f"  {self.description}")
         return "\n".join(lines)
@@ -77,7 +78,7 @@ class Option(BaseModel):
     example: str = Field(default="", alias="option_example")
     declarations: list[str] = Field(default_factory=list, alias="option_source")
 
-    @field_validator("type", "default", "example", mode="before")
+    @field_validator("type", "default", "example", "description", mode="before")
     @classmethod
     def coerce_none_to_str(cls, v):
         return v if v is not None else ""

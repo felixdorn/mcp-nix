@@ -289,13 +289,13 @@ class HomeManagerOptionsBackend:
         return "unstable"
 
     def validate_version(self, version: str) -> tuple[str, str | None]:
-        releases = self._client.list_releases()
-        valid_names = [r.name for r in releases]
-        valid_values = [r.value for r in releases]
-        if version in valid_names or version in valid_values or version == "unstable":
-            return (version, None)
-        default = self.get_default_version()
-        return (default, f"Version '{version}' not found, using '{default}' instead.")
+        from .homemanager import HomeManagerSearch, InvalidReleaseError
+
+        try:
+            return (HomeManagerSearch._get_release_value(version), None)
+        except InvalidReleaseError:
+            default = self.get_default_version()
+            return (default, f"Version '{version}' not found, using '{default}' instead.")
 
     def supports_declaration_read(self) -> bool:
         return True
