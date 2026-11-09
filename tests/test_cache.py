@@ -5,6 +5,7 @@ import tempfile
 from dataclasses import dataclass
 
 import pytest
+import requests
 
 from mcp_nix.cache import APIError, Cache
 
@@ -112,12 +113,16 @@ def test_get_or_set_calls_factory_on_cache_miss():
         assert cache.get(key) == {"data": 42}
 
 
-@pytest.mark.live
-def test_request_recovers_from_incompatible_cached_value():
+def test_request_recovers_from_incompatible_cached_value(monkeypatch):
     """Test that request() recovers when callback fails on cached value."""
     with tempfile.TemporaryDirectory() as tmpdir:
         cache = Cache(tmpdir)
         url = "https://httpbin.org/get"
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b'{"url": "https://httpbin.org/get"}'
+        response.url = url
+        monkeypatch.setattr(requests, "get", lambda *args, **kwargs: response)
 
         # Store an incompatible value directly
         incompatible = IncompatibleCachedValue(some_field="old format")
@@ -137,15 +142,55 @@ def test_request_recovers_from_incompatible_cached_value():
         assert isinstance(cache.get(url), CachedResponse)
 
 
-@pytest.mark.live
-def test_request_handles_404():
+def test_request_handles_404(monkeypatch):
     """Test that request() raises APIError for 404 responses."""
     with tempfile.TemporaryDirectory() as tmpdir:
         cache = Cache(tmpdir)
         url = "https://httpbin.org/status/404"
+        response = requests.Response()
+        response.status_code = 404
+        monkeypatch.setattr(requests, "get", lambda *args, **kwargs: response)
 
         with pytest.raises(APIError, match="404"):
             cache.request(url, lambda r: r.json())
 
         # Verify nothing was cached
         assert cache.get(url) is None
+
+
+def test_failed_validation_is_not_cached(tmp_path):
+    with Cache(str(tmp_path)) as cache:
+        with pytest.raises(KeyError):
+            cache.get_or_set("invalid", lambda: {}, lambda value: value["required"])
+        assert cache.get("invalid") is None
+
+
+def test_query_parameters_and_headers_have_separate_cache_entries(tmp_path, monkeypatch):
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append(kwargs)
+        response = requests.Response()
+        response.status_code = 200
+        response._content = str(kwargs).encode()
+        return response
+
+    monkeypatch.setattr(requests, "get", get)
+    with Cache(str(tmp_path)) as cache:
+        first = cache.request("https://example.org", lambda r: r.text, params={"q": "a"})
+        second = cache.request("https://example.org", lambda r: r.text, params={"q": "b"})
+        assert first != second
+        assert cache.request("https://example.org", lambda r: r.text, params={"q": "a"}) == first
+        cache.request(
+            "https://example.org", lambda r: r.text, params={"q": "a"}, headers={"Accept": "application/json"}
+        )
+        assert len(calls) == 3
+
+
+def test_connection_failures_become_api_errors(tmp_path, monkeypatch):
+    def fail(*args, **kwargs):
+        raise requests.ConnectionError("offline")
+
+    monkeypatch.setattr(requests, "get", fail)
+    with Cache(str(tmp_path)) as cache, pytest.raises(APIError, match="Connection failed"):
+        cache.request("https://example.org", lambda r: r.text)
