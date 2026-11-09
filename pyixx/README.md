@@ -16,12 +16,15 @@ results = index.search("colorscheme", max_results=10)
 for r in results:
     print(f"{r.name} (idx={r.idx}, scope={r.scope_id})")
 
-# Get metadata
-meta = index.meta()
-print(f"Chunk size: {meta.chunk_size}")
-print(f"Scopes: {meta.scopes}")
+# The new binary format contains entries, not deployment metadata.
+print(f"Entries: {index.size()}")
 
-# Calculate chunk for fetching full option details
-chunk, pos = index.get_chunk_for_idx(results[0].idx)
-# Fetch meta/{chunk}.json and get item at position `pos`
+# Read chunkSize and scope names from the search deployment configuration.
+chunk_size = 300
+chunk, pos = divmod(results[0].idx, chunk_size)
+# Fetch data/options/chunks/{chunk}.json and use item `pos`.
 ```
+
+Version 0.2.0 reads the current upstream index format. The removed `meta()` and
+`get_chunk_for_idx()` methods depended on metadata no longer embedded in indexes.
+Scope IDs still refer to the deployment's configured scope order.

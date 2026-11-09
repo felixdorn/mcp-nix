@@ -82,6 +82,17 @@ Then reference the package:
 | `search_nix_stdlib` | Search Nix stdlib functions (Noogle) |
 | `help_for_stdlib_function` | Get help for a stdlib function (Noogle) |
 
+### Result contracts
+
+Tools return readable text and typed `structuredContent`. Searches include records,
+`total`, `returned`, and the effective `version`. Tool failures set `isError=true`.
+All tools advertise read-only, non-destructive behavior while querying external services.
+
+Use `limit` (1–100) to bound searches. `show_option_details` returns up to 50 children
+by default; pass its `next_offset` as `offset` to continue. Source readers accept
+one-based `start_line` and `limit` (200 lines by default, maximum 1,000); follow
+`next_start_line` to continue reading. `list_versions` returns canonical version IDs.
+
 ### Excluding Tools
 
 Use `--exclude` to disable specific tools:

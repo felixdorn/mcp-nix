@@ -123,13 +123,17 @@
           };
 
           editablePythonSet = pythonSet.overrideScope editableOverlay;
-          virtualenv = editablePythonSet.mkVirtualEnv "mcp-nix-dev" workspace.deps.default;
+          virtualenv = editablePythonSet.mkVirtualEnv "mcp-nix-dev" workspace.deps.all;
         in
         {
           default = pkgs.mkShell {
             packages = [
               virtualenv
               pkgs.uv
+              pkgs.cargo
+              pkgs.rustc
+              pkgs.rustfmt
+              pkgs.clippy
             ];
 
             env = {
