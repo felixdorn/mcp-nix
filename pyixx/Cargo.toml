@@ -1,6 +1,6 @@
 [package]
 name = "pyixx"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module"] }
-libixx = { git = "https://github.com/NuschtOS/ixx", rev = "2c1be58" }
+libixx = { git = "https://github.com/NuschtOS/ixx", rev = "1b3c8be72baf29a225e21715a941f48b520d5281" }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
