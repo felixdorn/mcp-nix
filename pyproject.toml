@@ -4,7 +4,7 @@ version = "0.4.0"
 description = "MCP server for Nixpkgs, NixOS and Home Manager"
 readme = "README.md"
 license = "GPL-3.0-or-later"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 authors = [
     { name = "Félix Dorn", email = "dorn@xfe.li" }
 ]
@@ -28,7 +28,9 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.31.0",
-    "fastmcp>=0.1.0",
+    "fastmcp>=2.14.2,<3",
+    "anyio>=4.5,<5",
+    "platformdirs>=4,<5",
     "pydantic>=2.0.0",
     "diskcache>=5.6.0",
     "pyyaml>=6.0.0",
@@ -61,8 +63,6 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
-    "pytest-anyio>=0.0.0",
-    "syrupy>=4.0.0",
     "ruff>=0.8.0",
     "ty>=0.0.8",
 ]

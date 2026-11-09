@@ -2,7 +2,7 @@
 """MCP server for Nixpkgs, NixOS and Home Manager."""
 
 import argparse
-import os
+import sys
 
 from fastmcp import FastMCP
 
@@ -67,7 +67,10 @@ def validate_tool_names(names: set[str], arg_name: str) -> None:
     valid_names = set(ALL_TOOLS)
     for name in names:
         if name not in valid_names:
-            print(f"Error: Unknown tool '{name}' in {arg_name}. Available: {', '.join(sorted(valid_names))}")
+            print(
+                f"Error: Unknown tool '{name}' in {arg_name}. Available: {', '.join(sorted(valid_names))}",
+                file=sys.stderr,
+            )
             raise SystemExit(1)
 
 
@@ -91,7 +94,7 @@ def main() -> None:
     try:
         mcp.run()
     except KeyboardInterrupt:
-        os._exit(0)
+        return
 
 
 if __name__ == "__main__":

@@ -1,24 +1,24 @@
-.PHONY: lint check test test-update fmt pyixx-check
+.PHONY: lint check test test-live fmt pyixx-check
 
 lint:
-	uv run ruff check --fix .
-	uv run ruff format .
-	uv run ty check mcp_nix
+	uv run --locked ruff check --fix .
+	uv run --locked ruff format .
+	uv run --locked ty check mcp_nix
 
 pyixx-check:
-	cd pyixx && cargo clippy --all-targets -- -D warnings
+	uv run --locked cargo clippy --manifest-path pyixx/Cargo.toml --locked --all-targets -- -D warnings
 
 check:
-	uv run ruff check .
-	uv run ruff format --check .
-	uv run ty check mcp_nix
+	uv run --locked ruff check .
+	uv run --locked ruff format --check .
+	uv run --locked ty check mcp_nix
 
 test:
-	uv run pytest
+	uv run --locked pytest
 
-test-update:
-	uv run pytest --snapshot-update
+test-live:
+	uv run --locked pytest -m live
 
 fmt:
-	uv run ruff format .
+	uv run --locked ruff format .
 	cd pyixx && cargo fmt
