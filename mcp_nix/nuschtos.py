@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """NüschtOS-based option search logic (nixvim, nix-darwin, etc.)."""
 
+import hashlib
+import json
+import re
 from dataclasses import dataclass, field
+from time import monotonic
+from urllib.parse import urljoin, urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
 import pyixx
 
-from .cache import get_cache
+from .cache import DEFAULT_EXPIRE, get_cache
 from .models import SearchResult, _lines
 from .search import APIError, InvalidLimitError
 from .utils import html_to_text
@@ -151,11 +156,44 @@ class NuschtoOption(BaseModel):
 
 
 @dataclass
+class CatalogMeta:
+    """Deployment configuration, kept alongside the binary index."""
+
+    chunk_size: int
+    scopes: list[str]
+
+
+def _parse_catalog_config(bundle: str) -> CatalogMeta:
+    chunk = re.search(r"chunkSize:(\d+)", bundle)
+    scopes = re.search(r"scopes:\[(.*?)\],title:", bundle, re.DOTALL)
+    if not chunk or not scopes:
+        raise APIError("Could not discover NüschtOS catalog configuration")
+    names = re.findall(r'name:("(?:\\.|[^"\\])*")', scopes[1])
+    if not names or int(chunk[1]) <= 0:
+        raise APIError("Invalid NüschtOS catalog configuration")
+    return CatalogMeta(chunk_size=int(chunk[1]), scopes=[json.loads(name) for name in names])
+
+
+def _get_catalog_config(instance: str) -> CatalogMeta:
+    base = INSTANCES[instance].rstrip("/") + "/"
+    scripts = _cache.request(base, lambda r: [tag["src"] for tag in r.soup().select("script[src]")])
+    for src in scripts:
+        url = urljoin(base, src)
+        if urlparse(url).netloc != urlparse(base).netloc:
+            continue
+        if "main-" in src:
+            return _cache.request(url, lambda r: _parse_catalog_config(r.text))
+    raise APIError("Could not find the NüschtOS application bundle")
+
+
+@dataclass
 class IndexData:
     """Loaded index data."""
 
     index: pyixx.Index
-    meta: pyixx.IndexMeta
+    meta: CatalogMeta
+    fingerprint: str
+    expires_at: float
     chunks: dict[int, list[dict]] = field(default_factory=dict)
 
 
@@ -164,20 +202,26 @@ def _get_index_bytes(instance: str) -> bytes:
     if instance not in INSTANCES:
         raise APIError(f"Unknown instance: {instance}")
 
-    url = f"{INSTANCES[instance]}/index.ixx"
+    url = f"{INSTANCES[instance]}/data/options/index.ixx"
     return _cache.request(url, lambda r: r.content)
 
 
 def _get_index(instance: str) -> IndexData:
     """Get index for an instance, using cache if available."""
     # Check in-memory cache (pyixx.Index can't be serialized)
-    if instance in _index_cache:
-        return _index_cache[instance]
+    cached = _index_cache.get(instance)
+    if cached is not None and cached.expires_at > monotonic():
+        return cached
 
     data = _get_index_bytes(instance)
-    index = pyixx.Index.read(data)
-    meta = index.meta()
-    index_data = IndexData(index=index, meta=meta)
+    meta = _get_catalog_config(instance)
+    try:
+        index = pyixx.Index.read(data)
+    except ValueError as exc:
+        raise APIError("Unsupported NüschtOS index format; update mcp-nix/pyixx") from exc
+    index_data = IndexData(
+        index=index, meta=meta, fingerprint=hashlib.sha256(data).hexdigest(), expires_at=monotonic() + DEFAULT_EXPIRE
+    )
 
     _index_cache[instance] = index_data
     return index_data
@@ -192,25 +236,30 @@ def _get_chunk(instance: str, chunk: int, index_data: IndexData) -> list[dict]:
     if instance not in INSTANCES:
         raise APIError(f"Unknown instance: {instance}")
 
-    url = f"{INSTANCES[instance]}/meta/{chunk}.json"
+    url = f"{INSTANCES[instance]}/data/options/chunks/{chunk}.json"
 
     def use(r):
         data = r.json()
+        if not isinstance(data, list) or not data:
+            raise APIError("Invalid NüschtOS option chunk")
         index_data.chunks[chunk] = data
         return data
 
-    # Chunks never change, cache forever
-    return _cache.request(url, use, expire=None)
+    # Partition caches by index generation; chunks are mutable deployment assets.
+    return _cache.request(url, use, params={"index": index_data.fingerprint})
 
 
-def _get_option_by_idx(instance: str, idx: int, index_data: IndexData) -> dict | None:
+def _get_option_by_idx(instance: str, idx: int, index_data: IndexData, expected_name: str) -> dict | None:
     """Get option data by index."""
-    chunk, pos = index_data.index.get_chunk_for_idx(idx)
+    chunk, pos = divmod(idx, index_data.meta.chunk_size)
     chunk_data = _get_chunk(instance, chunk, index_data)
 
-    if pos < len(chunk_data):
+    if pos < len(chunk_data) and chunk_data[pos].get("name") == expected_name:
         return chunk_data[pos]
-    return None
+    # Do not return a different option if upstream deploys between index/chunk fetches.
+    _index_cache.pop(instance, None)
+    _cache.clear()
+    raise APIError("NüschtOS catalog changed while loading; retry the request")
 
 
 class InvalidProjectError(APIError):
@@ -254,7 +303,7 @@ class NuschtosSearch:
 
         options = []
         for result in results:
-            opt_data = _get_option_by_idx(instance, result.idx, index_data)
+            opt_data = _get_option_by_idx(instance, result.idx, index_data, result.name)
             if opt_data:
                 options.append(NuschtoOption.model_validate(opt_data))
 
@@ -272,7 +321,7 @@ class NuschtosSearch:
         if idx is None:
             return None
 
-        opt_data = _get_option_by_idx(instance, idx, index_data)
+        opt_data = _get_option_by_idx(instance, idx, index_data, name)
         if opt_data:
             return NuschtoOption.model_validate(opt_data)
         return None
@@ -283,13 +332,13 @@ class NuschtosSearch:
         instance, index_data, scope_id = NuschtosSearch._get_project_context(project)
 
         # Search with prefix wildcard
-        results = index_data.index.search(f"{prefix}.*", max_results=500, scope_id=scope_id)
+        results = index_data.index.search(f"{prefix}.*", max_results=index_data.index.size(), scope_id=scope_id)
 
         options = []
         prefix_dot = f"{prefix}."
         for result in results:
             if result.name.startswith(prefix_dot):
-                opt_data = _get_option_by_idx(instance, result.idx, index_data)
+                opt_data = _get_option_by_idx(instance, result.idx, index_data, result.name)
                 if opt_data:
                     options.append(NuschtoOption.model_validate(opt_data))
 

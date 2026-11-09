@@ -7,12 +7,6 @@ class SearchResult:
     scope_id: int
     name: str
 
-class IndexMeta:
-    """Index metadata."""
-
-    chunk_size: int
-    scopes: list[str]
-
 class Index:
     """A search index for NüschtOS-style option search."""
 
@@ -29,10 +23,6 @@ class Index:
         """Get the index of an option by its exact name."""
         ...
 
-    def meta(self) -> IndexMeta:
-        """Get index metadata (chunk_size, scopes)."""
-        ...
-
-    def get_chunk_for_idx(self, idx: int) -> tuple[int, int]:
-        """Calculate which metadata chunk contains the given index."""
+    def size(self) -> int:
+        """Return the number of indexed entries."""
         ...

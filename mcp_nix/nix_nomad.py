@@ -4,11 +4,11 @@
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, field_validator
 
-from .cache import get_cache
+from .cache import APIError, get_cache
 from .models import SearchResult, _lines
 from .utils import html_to_text
 
-NIX_NOMAD_URL = "https://tristanpemble.github.io/nix-nomad/"
+NIX_NOMAD_URL = "https://tristanpemble.github.io/nix-nomad/options.html"
 
 _cache = get_cache("nix-nomad")
 
@@ -55,7 +55,7 @@ class NixNomadOption(BaseModel):
         )
 
 
-def _parse_options(html: str) -> dict[str, NixNomadOption]:
+def _parse_docbook(html: str) -> dict[str, NixNomadOption]:
     """Parse options from the DocBook HTML documentation."""
     soup = BeautifulSoup(html, "html.parser")
     options: dict[str, NixNomadOption] = {}
@@ -127,6 +127,33 @@ def _parse_options(html: str) -> dict[str, NixNomadOption]:
             example=example,
         )
 
+    return options
+
+
+def _parse_options(html: str) -> dict[str, NixNomadOption]:
+    soup = BeautifulSoup(html, "html.parser")
+    options = {}
+    for node in soup.select("div.option[id]"):
+        name = node.select_one(".option-name a")
+        if name is None:
+            continue
+
+        def text(selector, node=node):
+            element = node.select_one(selector)
+            return element.get_text(separator=" ", strip=True) if element else ""
+
+        option = NixNomadOption(
+            name=name.get_text(strip=True),
+            type=text(".option-type code"),
+            description=text(".option-description"),
+            default=text(".option-default code"),
+            example=text(".option-example code"),
+        )
+        options[option.name] = option
+    if not options:
+        options = _parse_docbook(html)
+    if not options:
+        raise APIError("nix-nomad returned no option declarations; its documentation format may have changed")
     return options
 
 

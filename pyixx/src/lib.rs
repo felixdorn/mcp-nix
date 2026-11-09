@@ -23,23 +23,6 @@ impl SearchResult {
     }
 }
 
-/// Index metadata
-#[pyclass]
-#[derive(Clone)]
-pub struct IndexMeta {
-    #[pyo3(get)]
-    pub chunk_size: u32,
-    #[pyo3(get)]
-    pub scopes: Vec<String>,
-}
-
-#[pymethods]
-impl IndexMeta {
-    fn __repr__(&self) -> String {
-        format!("IndexMeta(chunk_size={}, scopes={:?})", self.chunk_size, self.scopes)
-    }
-}
-
 /// A search index for NüschtOS-style option search
 #[pyclass]
 pub struct Index {
@@ -86,27 +69,13 @@ impl Index {
     ///
     /// Returns:
     ///     Option index or None if not found
-    fn get_idx_by_name(&self, scope_id: u8, name: &str) -> PyResult<Option<usize>> {
-        self.inner
-            .get_idx_by_name(scope_id, name)
-            .map_err(|e| PyValueError::new_err(format!("Lookup failed: {e}")))
+    fn get_idx_by_name(&self, scope_id: u8, name: &str) -> Option<usize> {
+        self.inner.get_idx_by_name(scope_id, name)
     }
 
-    /// Get index metadata (`chunk_size`, scopes)
-    fn meta(&self) -> IndexMeta {
-        let meta = self.inner.meta();
-        IndexMeta {
-            chunk_size: meta.chunk_size,
-            scopes: meta.scopes.iter().map(ToString::to_string).collect(),
-        }
-    }
-
-    /// Calculate which metadata chunk contains the given index
-    fn get_chunk_for_idx(&self, idx: usize) -> (usize, usize) {
-        let chunk_size = self.inner.meta().chunk_size as usize;
-        let idx_in_chunk = idx % chunk_size;
-        let chunk = (idx - idx_in_chunk) / chunk_size;
-        (chunk, idx_in_chunk)
+    /// Number of entries, including all scopes.
+    fn size(&self) -> usize {
+        self.inner.size()
     }
 }
 
@@ -115,6 +84,5 @@ impl Index {
 fn pyixx(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Index>()?;
     m.add_class::<SearchResult>()?;
-    m.add_class::<IndexMeta>()?;
     Ok(())
 }

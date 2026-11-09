@@ -77,7 +77,7 @@
               cargoDeps = pkgs.rustPlatform.importCargoLock {
                 lockFile = ./pyixx/Cargo.lock;
                 outputHashes = {
-                  "libixx-0.0.0-git" = "sha256-15Y6isGV3x4wqqwOhHdHs26P6hF7XAfc6izJ/oA7yBA=";
+                  "libixx-0.0.0-git" = "sha256-NNf3vnTI9j+Zjliy/oQrrhQ1meyXt2I05aXjDE3VfJ0=";
                 };
               };
             });

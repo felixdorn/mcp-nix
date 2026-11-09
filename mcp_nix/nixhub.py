@@ -5,7 +5,7 @@ from .cache import get_cache
 from .models import NixhubCommit, NixhubRelease
 from .search import APIError
 
-NIXHUB_API_URL = "https://www.nixhub.io/packages"
+NIXHUB_API_URL = "https://search.devbox.sh/v2/pkg"
 
 _cache = get_cache("nixhub")
 
@@ -30,18 +30,18 @@ class VersionNotFoundError(APIError):
 
 def fetch_package(name: str) -> dict:
     """Fetch package data from Nixhub API or cache."""
-    url = f"{NIXHUB_API_URL}/{name}?_data=routes/_nixhub.packages.$pkg._index"
+    url = NIXHUB_API_URL
 
     def parse_package(r) -> dict:
         data = r.json()
-        if not data or "releases" not in data:
-            raise PackageNotFoundError(name)
+        if not isinstance(data, dict) or not isinstance(data.get("releases"), list):
+            raise APIError("Invalid NixHub package response: missing releases")
         return data
 
     try:
-        return _cache.request(url, parse_package)
+        return _cache.request(url, parse_package, params={"name": name}, timeout=30)
     except APIError as e:
-        if "404" in str(e):
+        if e.status_code == 404:
             raise PackageNotFoundError(name) from e
         raise
 
