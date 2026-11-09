@@ -93,3 +93,7 @@ known-first-party = ["mcp_nix"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+addopts = "-m 'not live'"
+markers = ["live: opt-in checks against public upstream services"]

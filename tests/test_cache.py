@@ -112,6 +112,7 @@ def test_get_or_set_calls_factory_on_cache_miss():
         assert cache.get(key) == {"data": 42}
 
 
+@pytest.mark.live
 def test_request_recovers_from_incompatible_cached_value():
     """Test that request() recovers when callback fails on cached value."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -136,6 +137,7 @@ def test_request_recovers_from_incompatible_cached_value():
         assert isinstance(cache.get(url), CachedResponse)
 
 
+@pytest.mark.live
 def test_request_handles_404():
     """Test that request() raises APIError for 404 responses."""
     with tempfile.TemporaryDirectory() as tmpdir:
