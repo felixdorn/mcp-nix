@@ -299,10 +299,10 @@ class NuschtosSearch:
         NuschtosSearch._validate_limit(limit)
         instance, index_data, scope_id = NuschtosSearch._get_project_context(project)
 
-        results = index_data.index.search(query, max_results=limit, scope_id=scope_id)
+        results = index_data.index.search(query, max_results=index_data.index.size(), scope_id=scope_id)
 
         options = []
-        for result in results:
+        for result in results[:limit]:
             opt_data = _get_option_by_idx(instance, result.idx, index_data, result.name)
             if opt_data:
                 options.append(NuschtoOption.model_validate(opt_data))
