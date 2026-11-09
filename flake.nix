@@ -103,6 +103,14 @@
         }
       );
 
+      checks = forAllSystems (system: {
+        startup = pkgsFor.${system}.runCommand "mcp-nix-startup" { } ''
+          export XDG_CACHE_HOME="$TMPDIR/cache"
+          ${self.packages.${system}.default}/bin/python -c 'from mcp_nix import tools'
+          touch "$out"
+        '';
+      });
+
       devShells = forAllSystems (
         system:
         let
